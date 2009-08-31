@@ -1,0 +1,5 @@
+
+
+INSTALL
+=======
+I build this library in order to be a contrib module someday. So to install it you need to download PostgreSQL from sources, create a folder in contrib and include it in the Makefile of the contrib folder, then you can do make and make install and follow the instructions to install any other contrib module.
