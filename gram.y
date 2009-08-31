@@ -111,34 +111,42 @@ and with_query is:
 SelectStmt:
             SELECT Param_select FROM Param_from
             {
-                fuzzy_query[0]=(char *)palloc(sizeof(char)*(strlen($2)+strlen($4)+20));
+                int len;
+                len=strlen($2)+strlen($4)+20;
+                fuzzy_query[0]=(char *)palloc(sizeof(char *)*len);
                 snprintf(fuzzy_query[0],(strlen($2)+strlen($4)+20),"SELECT %s FROM %s",$2,$4);
-                $$=fuzzy_query[0];
                 real_length=1;
+                $$=fuzzy_query[0];
             }
             |
             SelectStmt WHERE List_where
             {
-                fuzzy_query[1]=(char *)palloc(sizeof(char)*(strlen($1)+strlen($3)+20));
+                int len;
+                len=strlen($1)+strlen($3)+20;
+                fuzzy_query[1]=(char *)palloc(sizeof(char *)*len);
                 snprintf(fuzzy_query[1],(strlen($1)+strlen($3)+20),"%s WHERE %s",$1,$3);
-                $$=fuzzy_query[1];
                 real_length=2;
+                $$=fuzzy_query[1];
             }
             |
             SelectStmt ORDER BY List_order
             {
-                fuzzy_query[2]=(char *)palloc(sizeof(char)*(strlen($1)+strlen($4)+20));
+                int len;
+                len=strlen($1)+strlen($4)+20;
+                fuzzy_query[2]=(char *)palloc(sizeof(char *)*len);
                 snprintf(fuzzy_query[2],(strlen($1)+strlen($4)+20),"%s ORDER BY %s",$1,$4);
-                $$=fuzzy_query[2];
                 real_length=3;
+                $$=fuzzy_query[2];
             }
             |
             SelectStmt WITH CALIBRATION Param
             {
-                fuzzy_query[3]=(char *)palloc(sizeof(char)*(strlen($1)+strlen($4)+20));
+                int len;
+                len=strlen($1)+strlen($4)+20;
+                fuzzy_query[3]=(char *)palloc(sizeof(char *)*len);
                 snprintf(fuzzy_query[3],(strlen($1)+strlen($4)+20),"%s WITH CALIBRATION %s",$1,$4);
-                $$=fuzzy_query[3];
                 real_length=4;
+                $$=fuzzy_query[3];
             }
 ;
 
@@ -190,9 +198,13 @@ List_where:
             | List_where EQUAL Param {
             	int len;
                 char *str_result;
+                char *str_translated;
+
                 len=strlen(field)+strlen($3)+15;//15 is the length of "%s > %f AND %s < %f"
                 str_result=(char *)palloc(sizeof(char)*(len*2));
-                $$=translate_fuzzy_preds(str_result,field,$3);
+                str_translated=(char *)palloc(sizeof(char)*(len*2));
+                str_translated=translate_fuzzy_preds(str_result,field,$3);
+                strcat($$,str_translated);
                 pfree(str_result);
             }
             | List_where AND Param {

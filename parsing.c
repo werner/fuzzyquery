@@ -89,15 +89,15 @@ char *translate_fuzzy_preds(char *result,const char *field,const char *value){
 
       if (strcmp(SPI_getvalue(tuple,tupdesc,4),"INFINIT")==0){
           max=atof(SPI_getvalue(tuple,tupdesc,7));
-          snprintf(result,(len*2),"%s < %f",field,max);
+          snprintf(result,(len*2)," < %f",max);
       }else if(strcmp(SPI_getvalue(tuple,tupdesc,7),"INFINIT")==0){
           min=atof(SPI_getvalue(tuple,tupdesc,4));
-          snprintf(result,(len*2),"%s > %f",field,min);
+          snprintf(result,(len*2)," > %f",min);
       }else{
           min=atof(SPI_getvalue(tuple,tupdesc,4));
           max=atof(SPI_getvalue(tuple,tupdesc,7));
 
-          snprintf(result,(len*2),"%s > %f AND %s < %f",field,min,field,max);
+          snprintf(result,(len*2)," > %f AND %s < %f",min,field,max);
       }
     }
 

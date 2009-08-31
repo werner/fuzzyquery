@@ -1,4 +1,3 @@
-
 MODULE_big = fuzzyquery
 OBJS= gram.o parsing.o fuzzyquery.o
 DATA_built = $(addsuffix .sql, $(MODULE_big))
@@ -10,7 +9,7 @@ include $(top_srcdir)/contrib/contrib-global.mk
 
 FLEXFLAGS = -CF
 
-# gram is compiled as part of cubeparse
+# scan is compiled as part of gram
 gram.o: $(srcdir)/scan.c
 
 $(srcdir)/gram.h: $(srcdir)/gram.c ;
