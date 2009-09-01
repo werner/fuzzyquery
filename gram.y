@@ -7,7 +7,7 @@
     #include "parsing.h"
 
     #define YYDEBUG 1
-    #define QUERY_LENGTH 4
+    #define QUERY_LENGTH 5
     #define YYPARSE_PARAM result  /* need this to pass a pointer (void *) to yyparse */
 
     int real_length;
@@ -32,12 +32,26 @@
 query:  /* empty string */
       |  query command
         {
-          int i;
+          int   i;
+          char  *sql;
+          int   len;
 
-          *((void **)result) = fuzzy_query[real_length-1];
+          len=0;
+          for (i=0;i<real_length;i++)
+            len+=strlen(fuzzy_query[i]);
+
+          sql=(char *)palloc(sizeof(char *)*len);
+          strcpy(sql,"");//I don't know why but if I don't do this sql concatenate the last query
 
           for (i=0;i<real_length;i++)
+            strcat(sql,fuzzy_query[i]);
+
+          *((void **)result) = sql;
+
+          pfree(sql);
+          for (i=0;i<real_length;i++)
             pfree(fuzzy_query[i]);
+
         }
 ;
 
@@ -112,41 +126,44 @@ SelectStmt:
             SELECT Param_select FROM Param_from
             {
                 int len;
-                len=strlen($2)+strlen($4)+20;
+                len=strlen($2)+10;
                 fuzzy_query[0]=(char *)palloc(sizeof(char *)*len);
-                snprintf(fuzzy_query[0],(strlen($2)+strlen($4)+20),"SELECT %s FROM %s",$2,$4);
-                real_length=1;
-                $$=fuzzy_query[0];
+                len=strlen($4)+10;
+                fuzzy_query[1]=(char *)palloc(sizeof(char *)*len);
+
+                snprintf(fuzzy_query[0],(strlen($2)+10),
+                                        " SELECT %s",$2);
+                snprintf(fuzzy_query[1],(strlen($4)+10),
+                                        " FROM %s",$4);
+
+                real_length=2;
             }
             |
             SelectStmt WHERE List_where
             {
                 int len;
-                len=strlen($1)+strlen($3)+20;
-                fuzzy_query[1]=(char *)palloc(sizeof(char *)*len);
-                snprintf(fuzzy_query[1],(strlen($1)+strlen($3)+20),"%s WHERE %s",$1,$3);
-                real_length=2;
-                $$=fuzzy_query[1];
+                len=strlen($3)+20;
+                fuzzy_query[2]=(char *)palloc(sizeof(char *)*len);
+                snprintf(fuzzy_query[2],(strlen($3)+10)," WHERE %s",$3);
+                real_length=3;
             }
             |
             SelectStmt ORDER BY List_order
             {
                 int len;
-                len=strlen($1)+strlen($4)+20;
-                fuzzy_query[2]=(char *)palloc(sizeof(char *)*len);
-                snprintf(fuzzy_query[2],(strlen($1)+strlen($4)+20),"%s ORDER BY %s",$1,$4);
-                real_length=3;
-                $$=fuzzy_query[2];
+                len=strlen($4)+20;
+                fuzzy_query[3]=(char *)palloc(sizeof(char *)*len);
+                snprintf(fuzzy_query[3],(strlen($4)+20)," ORDER BY %s",$4);
+                real_length=4;
             }
             |
             SelectStmt WITH CALIBRATION Param
             {
                 int len;
-                len=strlen($1)+strlen($4)+20;
-                fuzzy_query[3]=(char *)palloc(sizeof(char *)*len);
-                snprintf(fuzzy_query[3],(strlen($1)+strlen($4)+20),"%s WITH CALIBRATION %s",$1,$4);
-                real_length=4;
-                $$=fuzzy_query[3];
+                len=strlen($4)+20;
+                fuzzy_query[4]=(char *)palloc(sizeof(char *)*len);
+                snprintf(fuzzy_query[4],(strlen($4)+20)," WITH CALIBRATION %s",$4);
+                real_length=5;
             }
 ;
 

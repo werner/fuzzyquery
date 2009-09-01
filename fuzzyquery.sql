@@ -16,3 +16,7 @@ GRANT SELECT ON pg_fuzzypredicate TO PUBLIC;
 CREATE OR REPLACE FUNCTION sqlf (text) RETURNS SETOF record
 AS '$libdir/fuzzyquery', 'sqlf'
 LANGUAGE C VOLATILE STRICT;
+
+CREATE OR REPLACE FUNCTION membdg(text) RETURNS int4
+AS '$libdir/fuzzyquery', 'membdg'
+LANGUAGE C;

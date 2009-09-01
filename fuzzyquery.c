@@ -8,6 +8,7 @@
 #include "miscadmin.h"
 
 extern Datum sqlf(PG_FUNCTION_ARGS);
+extern Datum membdg(PG_FUNCTION_ARGS);
 
 PG_MODULE_MAGIC;
 
@@ -96,7 +97,6 @@ sqlf(PG_FUNCTION_ARGS)
                     break;
     }
 
-
     /*
      * switch to long-lived memory context
      */
@@ -111,7 +111,6 @@ sqlf(PG_FUNCTION_ARGS)
                                                       false, work_mem);
 
     MemoryContextSwitchTo(oldcontext);
-
 
     /*
      * Generate attribute metadata needed later to produce tuples from raw C
@@ -140,7 +139,7 @@ sqlf(PG_FUNCTION_ARGS)
         /* get the next sql result tuple */
         spi_tuple = spi_tuptable->vals[call_cntr];
 
-      /*
+        /*
          * now loop through the sql results and assign each value in sequence
          * to the next category
          */
@@ -181,4 +180,14 @@ sqlf(PG_FUNCTION_ARGS)
 
     return (Datum) 0;
 
+}
+
+PG_FUNCTION_INFO_V1(membdg);
+
+Datum
+membdg(PG_FUNCTION_ARGS)
+{
+    int result;
+    result=30;
+    PG_RETURN_INT16(result);
 }
