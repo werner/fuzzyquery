@@ -17,6 +17,7 @@ CREATE OR REPLACE FUNCTION sqlf (text) RETURNS SETOF record
 AS '$libdir/fuzzyquery', 'sqlf'
 LANGUAGE C VOLATILE STRICT;
 
-CREATE OR REPLACE FUNCTION membdg(text) RETURNS int4
+CREATE OR REPLACE FUNCTION membdg(double precision,double precision,double precision,double precision,double precision)
+RETURNS float
 AS '$libdir/fuzzyquery', 'membdg'
 LANGUAGE C;

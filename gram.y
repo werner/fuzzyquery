@@ -14,6 +14,17 @@
     char *field;
     char *fuzzy_query[QUERY_LENGTH];
 
+    char *str_filter;
+
+    typedef struct Membdg_values {
+        char *field;        
+        double min;
+        double first_core;
+        double second_core;
+        double max;
+    } Membdg_values;
+
+    Membdg_values membdg_values;
 %}
 
 %union {
@@ -35,13 +46,25 @@ query:  /* empty string */
           int   i;
           char  *sql;
           int   len;
+          char *args_membdg;
 
           len=0;
           for (i=0;i<real_length;i++)
             len+=strlen(fuzzy_query[i]);
 
           sql=(char *)palloc(sizeof(char *)*len);
-          strcpy(sql,"");//I don't know why but if I don't do this sql concatenate the last query
+          strcpy(sql,""); // I don't know why but if I don't do this, sql concatenates the last query
+
+          if (field!=NULL){
+              len=strlen(field)+60;
+              args_membdg=(char *)palloc(sizeof(char *)*len);
+              snprintf(args_membdg,len,"%s,%f,%f,%f,%f",field,membdg_values.min,
+                                    membdg_values.first_core,membdg_values.second_core,membdg_values.max);
+
+              strcat(fuzzy_query[0],", fuzzy.membdg(");
+              strcat(fuzzy_query[0], args_membdg);
+              strcat(fuzzy_query[0],")");
+          }
 
           for (i=0;i<real_length;i++)
             strcat(sql,fuzzy_query[i]);
@@ -131,7 +154,7 @@ SelectStmt:
                 len=strlen($4)+10;
                 fuzzy_query[1]=(char *)palloc(sizeof(char *)*len);
 
-                snprintf(fuzzy_query[0],(strlen($2)+10),
+                snprintf(fuzzy_query[0],(strlen($2)+40),
                                         " SELECT %s",$2);
                 snprintf(fuzzy_query[1],(strlen($4)+10),
                                         " FROM %s",$4);
@@ -205,44 +228,53 @@ Param_from:
 List_where:
             Param {
                 $$=$1;
-                field=$1;
+                field=(char *)palloc(sizeof(char)*strlen($1));
+                strcpy(field,$1);
             }
             | LEFTP Param {
                 strcat($$," (");
                 strcat($$,$2);
-                field=$2;
+                field=(char *)palloc(sizeof(char)*strlen($2));
+                strcpy(field,$2);
             }
             | List_where EQUAL Param {
             	int len;
                 char *str_result;
-                char *str_translated;
 
                 len=strlen(field)+strlen($3)+15;//15 is the length of "%s > %f AND %s < %f"
                 str_result=(char *)palloc(sizeof(char)*(len*2));
-                str_translated=(char *)palloc(sizeof(char)*(len*2));
-                str_translated=translate_fuzzy_preds(str_result,field,$3);
-                strcat($$,str_translated);
+
+                str_filter=(char *)palloc(sizeof(char)*(len*2));
+                str_filter=translate_fuzzy_preds(str_result,field,$3,
+                            &membdg_values.min,&membdg_values.first_core,&membdg_values.second_core,&membdg_values.max);
+
+                strcat($$,str_filter);
+
                 pfree(str_result);
             }
             | List_where AND Param {
                 strcat($$," AND ");
                 strcat($$,$3);
-                field=$3;
+                field=(char *)palloc(sizeof(char)*strlen($3));
+                strcpy(field,$3);
             }
             | List_where RIGHTP AND Param {
                 strcat($$,") AND ");
                 strcat($$,$4);
-                field=$4;
+                field=(char *)palloc(sizeof(char)*strlen($4));
+                strcpy(field,$4);
             }
             | List_where OR Param {
                 strcat($$," OR ");
                 strcat($$,$3);
-                field=$3;
+                field=(char *)palloc(sizeof(char)*strlen($3));
+                strcpy(field,$3);
             }
             | List_where RIGHTP OR Param {
                 strcat($$,") OR ");
                 strcat($$,$4);
-                field=$4;
+                field=(char *)palloc(sizeof(char)*strlen($4));
+                strcpy(field,$4);
             }
 ;
 

@@ -54,10 +54,9 @@ char *drop_fuzzy_pred(const char *name){
     return str;
 }
 
-char *translate_fuzzy_preds(char *result,const char *field,const char *value){
+char *translate_fuzzy_preds(char *result,char *field,const char *value,double *min, double *fcore,double *score,double *max){
     char *fp_sqlf;
     int len,ret,proc;
-    double min,fcore,score,max;
     const char *head="SELECT predicate,beginf,endf,minimum,first_core,second_core,maximum "
                     "FROM fuzzy.pg_fuzzypredicate "
                     "WHERE predicate=";
@@ -82,22 +81,22 @@ char *translate_fuzzy_preds(char *result,const char *field,const char *value){
       SPITupleTable *tuptable = SPI_tuptable;
       HeapTuple tuple = tuptable->vals[0];
 
-      fcore=atof(SPI_getvalue(tuple,tupdesc,5));
-      score=atof(SPI_getvalue(tuple,tupdesc,6));
+      *fcore=atof(SPI_getvalue(tuple,tupdesc,5));
+      *score=atof(SPI_getvalue(tuple,tupdesc,6));
 
       len=strlen(value)+strlen(field)+15;
 
       if (strcmp(SPI_getvalue(tuple,tupdesc,4),"INFINIT")==0){
-          max=atof(SPI_getvalue(tuple,tupdesc,7));
-          snprintf(result,(len*2)," < %f",max);
+          *max=atof(SPI_getvalue(tuple,tupdesc,7));
+          snprintf(result,(len*2)," < %f",*max);
       }else if(strcmp(SPI_getvalue(tuple,tupdesc,7),"INFINIT")==0){
-          min=atof(SPI_getvalue(tuple,tupdesc,4));
-          snprintf(result,(len*2)," > %f",min);
+          *min=atof(SPI_getvalue(tuple,tupdesc,4));
+          snprintf(result,(len*2)," > %f",*min);
       }else{
-          min=atof(SPI_getvalue(tuple,tupdesc,4));
-          max=atof(SPI_getvalue(tuple,tupdesc,7));
+          *min=atof(SPI_getvalue(tuple,tupdesc,4));
+          *max=atof(SPI_getvalue(tuple,tupdesc,7));
 
-          snprintf(result,(len*2)," > %f AND %s < %f",min,field,max);
+          snprintf(result,(len*2)," > %f AND %s < %f",*min,field,*max);
       }
     }
 

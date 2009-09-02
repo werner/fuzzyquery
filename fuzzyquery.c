@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "postgres.h"
 #include "gram.h"
 #include "utils/builtins.h"
@@ -45,6 +47,7 @@ sqlf(PG_FUNCTION_ARGS)
 
     sql=result;
 
+    elog(INFO,"%s\n",sql);
     /* check to see if caller supports us returning a tuplestore */
     if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
             ereport(ERROR,
@@ -187,7 +190,23 @@ PG_FUNCTION_INFO_V1(membdg);
 Datum
 membdg(PG_FUNCTION_ARGS)
 {
-    int result;
-    result=30;
-    PG_RETURN_INT16(result);
+    float field,min,fcore,score,max,result;
+
+    field=PG_GETARG_FLOAT8(0);
+    min=PG_GETARG_FLOAT8(1);
+    fcore=PG_GETARG_FLOAT8(2);//first core
+    score=PG_GETARG_FLOAT8(3);//second core
+    max=PG_GETARG_FLOAT8(4);
+    result=0;
+
+    if (field >= fcore && field <= score){
+        result=1.0;
+    }else{
+        if (field>score)
+            result=(field-max)*0.1;
+        else if (field<fcore)
+            result=(field-min)*0.1;
+    }
+    return Float8GetDatum(fabs(result));
+
 }
