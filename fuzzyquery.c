@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <string.h>
+#include <math.h>
 
 #include "postgres.h"
 #include "gram.h"
@@ -8,6 +10,8 @@
 #include "access/heapam.h"
 #include "fmgr.h"
 #include "miscadmin.h"
+
+#define ISINFINIT(x) strcmp(x,"INFINIT")==0 ? 0 : atof(x)
 
 extern Datum sqlf(PG_FUNCTION_ARGS);
 extern Datum membdg(PG_FUNCTION_ARGS);
@@ -190,23 +194,55 @@ PG_FUNCTION_INFO_V1(membdg);
 Datum
 membdg(PG_FUNCTION_ARGS)
 {
-    float field,min,fcore,score,max,result;
+    float field,min,fcore,score,max,range;
+    double result, return_value;
+    char *str_result;
 
     field=PG_GETARG_FLOAT8(0);
-    min=PG_GETARG_FLOAT8(1);
-    fcore=PG_GETARG_FLOAT8(2);//first core
-    score=PG_GETARG_FLOAT8(3);//second core
-    max=PG_GETARG_FLOAT8(4);
+
+    min=ISINFINIT(text_to_cstring(PG_GETARG_TEXT_PP(1)));
+    fcore=ISINFINIT(text_to_cstring(PG_GETARG_TEXT_PP(2))); //first core
+    score=ISINFINIT(text_to_cstring(PG_GETARG_TEXT_PP(3))); //second core
+    max=ISINFINIT(text_to_cstring(PG_GETARG_TEXT_PP(4)));
     result=0;
 
-    if (field >= fcore && field <= score){
-        result=1.0;
-    }else{
-        if (field>score)
+    //if min is INFINITE, then fcore should be INFINITE
+    if (strcmp(text_to_cstring(PG_GETARG_TEXT_PP(1)),"INFINIT")==0){
+        if (field<=score)
+            result=1.0;
+        else if (field>score)
             result=(field-max)*0.1;
+    //if max is INFINITE, then score should be INFINITE
+    }else if (strcmp(text_to_cstring(PG_GETARG_TEXT_PP(4)),"INFINIT")==0){
+        if (field>=fcore)
+            result=1.0;
         else if (field<fcore)
             result=(field-min)*0.1;
+    //Everything else
+    }else if (field >= fcore && field <= score){
+        result=1.0;
+    }else{
+        if (field>score){
+            range=max-score;
+            result=(field-max)/range;
+        }else if (field<fcore){
+            range=fcore-min;
+            result=(field-min)/range;
+        }
     }
-    return Float8GetDatum(fabs(result));
+
+    str_result=(char *)palloc(sizeof(double));
+
+    snprintf(str_result,sizeof(double),"%.2f",result);
+
+    return_value=atof(str_result);
+
+    pfree(str_result);
+
+    //I do this to prevent a membership degree bigger than 1.0
+    if (fabs(return_value)>1.0)
+        return 0;
+    else
+        return Float8GetDatum(fabs(return_value));
 
 }

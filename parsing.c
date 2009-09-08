@@ -25,7 +25,7 @@ char *create_fuzzy_pred( const char *name,
     char *str;
     int len;
 
-    head="INSERT INTO fuzzy.pg_fuzzypredicate VALUES(";
+    head="INSERT INTO fuzzy.pg_fuzzypredicate(predicate,beginf,endf,minimum,first_core,second_core,maximum) VALUES(";
 
     len=strlen(head)+strlen(name)+strlen(begin)+strlen(end)+strlen(min)+strlen(core1)+strlen(core2)+strlen(max);
 
@@ -54,7 +54,7 @@ char *drop_fuzzy_pred(const char *name){
     return str;
 }
 
-char *translate_fuzzy_preds(char *result,char *field,const char *value,double *min, double *fcore,double *score,double *max){
+char *translate_fuzzy_preds(char *result,char *field,const char *value,char **min, char **fcore,char **score,char **max){
     char *fp_sqlf;
     int len,ret,proc;
     const char *head="SELECT predicate,beginf,endf,minimum,first_core,second_core,maximum "
@@ -81,22 +81,19 @@ char *translate_fuzzy_preds(char *result,char *field,const char *value,double *m
       SPITupleTable *tuptable = SPI_tuptable;
       HeapTuple tuple = tuptable->vals[0];
 
-      *fcore=atof(SPI_getvalue(tuple,tupdesc,5));
-      *score=atof(SPI_getvalue(tuple,tupdesc,6));
+      *min=SPI_getvalue(tuple,tupdesc,4);
+      *fcore=SPI_getvalue(tuple,tupdesc,5);
+      *score=SPI_getvalue(tuple,tupdesc,6);
+      *max=SPI_getvalue(tuple,tupdesc,7);
 
-      len=strlen(value)+strlen(field)+15;
+      len=strlen(value)+strlen(field)+30;
 
-      if (strcmp(SPI_getvalue(tuple,tupdesc,4),"INFINIT")==0){
-          *max=atof(SPI_getvalue(tuple,tupdesc,7));
-          snprintf(result,(len*2)," < %f",*max);
-      }else if(strcmp(SPI_getvalue(tuple,tupdesc,7),"INFINIT")==0){
-          *min=atof(SPI_getvalue(tuple,tupdesc,4));
-          snprintf(result,(len*2)," > %f",*min);
+      if (strcmp(*min,"INFINIT")==0){
+          snprintf(result,(len*2)," %s < %s",field,*max);
+      }else if(strcmp(*max,"INFINIT")==0){
+          snprintf(result,(len*2)," %s > %s",field, *min);
       }else{
-          *min=atof(SPI_getvalue(tuple,tupdesc,4));
-          *max=atof(SPI_getvalue(tuple,tupdesc,7));
-
-          snprintf(result,(len*2)," > %f AND %s < %f",*min,field,*max);
+          snprintf(result,(len*2)," %s > %s AND %s < %s",field,*min,field,*max);
       }
     }
 

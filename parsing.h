@@ -1,4 +1,4 @@
-char *translate_fuzzy_preds(char *result,char *field,const char *value,double *min, double *fcore,double *score,double *max);
+char *translate_fuzzy_preds(char *result,char *field,const char *value,char **min, char **fcore,char **score,char **max);
 
 char *create_fuzzy_pred(const char *name,
                        const char *begin,const char *end,
