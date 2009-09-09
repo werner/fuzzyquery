@@ -38,6 +38,7 @@
 
     Membdg_values membdg_values;
 
+		int *is_fuzzy;
 		
 %}
 
@@ -61,11 +62,13 @@ query:  /* empty string */
 					int 	j=0;
           char  *sql;
           int   len;
+ 					//This variable is used to add the membership degree function
+					//in the where clause 
+					char	*calib_where;
 
           len=0;
           for (i=0;i<real_length;i++)
             len+=strlen(fuzzy_query[i]);
-
 					len+=20;
 					if(filter_times==1 || real_length==1){
 		        sql=(char *)palloc(sizeof(char *)*len);
@@ -76,7 +79,9 @@ query:  /* empty string */
 								strcat(sql,args_membdg[0]);
 								strcat(sql," membdg");
 							}
+
 	            strcat(sql,fuzzy_query[i]);
+
 							if (i==WHERE_CLAUSE)
 									strcat(sql," ORDER BY membdg");
 						}
@@ -84,7 +89,8 @@ query:  /* empty string */
 
 						for(i=0;i<filter_times;i++){
 							len+=strlen(sub_sqlf_filters[i]);
-							len+=strlen(args_membdg[i]);
+							if (args_membdg[i]!='\0')
+								len+=strlen(args_membdg[i]);
 							len+=150;
 						}
 
@@ -92,25 +98,49 @@ query:  /* empty string */
 
 		        sql=(char *)palloc(sizeof(char *)*len);
 		        strcpy(sql,""); // I don't know why but if I don't do this, sql concatenates the last query
-				
+
+						len=0;
 	          for (i=0;i<real_length;i++){
 							if (i==FROM_CLAUSE){
-								if (fop==LEAST)
-									strcat(sql,"LEAST(");
-								else if (fop==GREATEST)
-									strcat(sql,"GREATEST(");
 
-								for (j==0;j<filter_times;j++)
-									strcat(sql,args_membdg[j]);
-								strcat(sql,") membdg");
+								for (j=0;j<filter_times;j++)
+									if (args_membdg[j]!='\0')
+										len+=strlen(args_membdg[j]);
+
+								calib_where=(char *)palloc(sizeof(char *)*len);
+
+								if (fop==LEAST)
+									strcpy(calib_where,"LEAST(");
+								else if (fop==GREATEST)
+									strcpy(calib_where,"GREATEST(");
+								
+								for (j=0;j<filter_times;j++)
+									if (args_membdg[j]!='\0')
+										strcat(calib_where,args_membdg[j]);
+								
+								strcat(calib_where,") ");
+								strcat(sql,calib_where);
+								strcat(sql," membdg ");
+
 							}
 
-	            strcat(sql,fuzzy_query[i]);
-							
-							if (i==WHERE_CLAUSE)
+							//This is to prevent adding the WITH CALIBRATION at the end of the query
+							if (i!=CALIBRATION_CLAUSE)
+	            	strcat(sql,fuzzy_query[i]);
+
+							if (i==WHERE_CLAUSE){
+									if (real_length==5){
+										strcat(sql," AND ");
+										strcat(sql,calib_where);
+										strcat(sql,"=");
+										strcat(sql,fuzzy_query[CALIBRATION_CLAUSE]);
+									}
 									strcat(sql," ORDER BY membdg");
+							}
 
 						}
+						pfree(calib_where);
+
 					}
 
           *((void **)result) = sql;
@@ -125,14 +155,15 @@ query:  /* empty string */
 						pfree(fuzzy_query[i]);
 					}
           for (i=0;i<filter_times;i++){
-						strcpy(args_membdg[i],"");            
+						if (args_membdg[i]!='\0'){
+							strcpy(args_membdg[i],"");
+							pfree(args_membdg[i]);
+            }
 						strcpy(sub_sqlf_filters[i],"");						
-						pfree(args_membdg[i]);
 				  	pfree(sub_sqlf_filters[i]);
 					}
 					filter_times=0;
 					real_length=0;
-
         }
 ;
 
@@ -243,7 +274,7 @@ SelectStmt:
             SelectStmt ORDER BY List_order
             {
                 int len;
-                len=strlen($4)+20;
+                len=strlen($4)+2;
                 fuzzy_query[ORDER_BY_CLAUSE]=(char *)palloc(sizeof(char *)*len);
                 snprintf(fuzzy_query[ORDER_BY_CLAUSE],(strlen($4)+20),", %s",$4);
                 real_length=4;
@@ -252,9 +283,9 @@ SelectStmt:
             SelectStmt WITH CALIBRATION Param
             {
                 int len;
-                len=strlen($4)+20;
+                len=strlen($4)+2;
                 fuzzy_query[CALIBRATION_CLAUSE]=(char *)palloc(sizeof(char *)*len);
-                snprintf(fuzzy_query[CALIBRATION_CLAUSE],(strlen($4)+20)," WITH CALIBRATION %s",$4);
+                snprintf(fuzzy_query[CALIBRATION_CLAUSE],len,"%s",$4);
                 real_length=5;
             }
 ;
@@ -315,33 +346,43 @@ List_where:
                 len=strlen(field)+strlen($3)+15; //15 is the length of "%s > %f AND %s < %f"
                 str_result=(char *)palloc(sizeof(char *)*(len));
 
+								is_fuzzy=0;
                 str_filter=(char *)palloc(sizeof(char *)*(len));
                 str_filter=translate_fuzzy_preds(str_result,field,$3,
-                            &membdg_values.min,&membdg_values.first_core,&membdg_values.second_core,&membdg_values.max);
+                            &membdg_values.min,&membdg_values.first_core,
+														&membdg_values.second_core,&membdg_values.max,&is_fuzzy);
 
-								//This is used to get the membership degree
-                len=strlen(field)+100;
-                args_membdg[filter_times]=(char *)palloc(sizeof(char *)*len);
-                snprintf(args_membdg[filter_times],len,
-											"fuzzy.membdg(%s,'%s'::text,'%s'::text,'%s'::text,'%s'::text)",field,
-												membdg_values.min,membdg_values.first_core,membdg_values.second_core,membdg_values.max);
+								if (is_fuzzy==1){
+									if (filter_times>0){
+                		args_membdg[filter_times-1]=(char *)palloc(sizeof(char *)+2);
+                		snprintf(args_membdg[filter_times-1],2,",");
+									}
 
-                len=strlen(str_filter);
+									//This is used to get the membership degree
+		              len=strlen(field)+100;
+		              args_membdg[filter_times]=(char *)palloc(sizeof(char *)*len);
+		              snprintf(args_membdg[filter_times],len,
+												"fuzzy.membdg(%s,'%s'::text,'%s'::text,'%s'::text,'%s'::text)",field,
+													membdg_values.min,membdg_values.first_core,membdg_values.second_core,membdg_values.max);
 
-                sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)*len*2);
+								}else{
+		              args_membdg[filter_times-1]=(char *)palloc(sizeof(char *));
+									strcpy(args_membdg[filter_times-1]," ");
+								}
+	              len=strlen(str_filter);
 
-                snprintf(sub_sqlf_filters[filter_times],(len*2),"%s",str_filter);
+	              sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)*len*2);
 
-                pfree(str_result);
+	              snprintf(sub_sqlf_filters[filter_times],(len*2),"%s",str_filter);
+
 								filter_times++;
+                pfree(str_result);
 
             }
             | List_where AND Param {
 
 								//I add a comma to args_membdg to separate the memberships degrees
 								fop=LEAST;
-                args_membdg[filter_times]=(char *)palloc(sizeof(char *)+2);
-                snprintf(args_membdg[filter_times],2,",");
 
 								//This I add an AND to the sub_sqlf_filters array
                 sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);

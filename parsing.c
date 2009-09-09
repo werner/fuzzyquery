@@ -54,7 +54,7 @@ char *drop_fuzzy_pred(const char *name){
     return str;
 }
 
-char *translate_fuzzy_preds(char *result,char *field,const char *value,char **min, char **fcore,char **score,char **max){
+char *translate_fuzzy_preds(char *result,char *field,const char *value,char **min, char **fcore,char **score,char **max, int *is_fuzzy){
     char *fp_sqlf;
     int len,ret,proc;
     const char *head="SELECT predicate,beginf,endf,minimum,first_core,second_core,maximum "
@@ -73,8 +73,14 @@ char *translate_fuzzy_preds(char *result,char *field,const char *value,char **mi
 
     proc=SPI_processed;
 
-    if (proc==0)
-        elog(ERROR,"there's a query trouble, maybe there's no data to show");
+    if (proc==0){
+      len=strlen(value)+strlen(field)+30;
+			snprintf(result,(len*2),"%s=%s",field,value);
+		  SPI_finish();
+			*is_fuzzy=0;
+		  pfree(fp_sqlf);
+		  return result;
+		}
 
     if (ret > 0 && SPI_tuptable != NULL){
       TupleDesc tupdesc = SPI_tuptable->tupdesc;
@@ -97,6 +103,7 @@ char *translate_fuzzy_preds(char *result,char *field,const char *value,char **mi
       }
     }
 
+		*is_fuzzy=1;
     SPI_finish();
     pfree(fp_sqlf);
     return result;
