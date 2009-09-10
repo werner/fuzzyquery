@@ -39,7 +39,9 @@
     Membdg_values membdg_values;
 
 		int *is_fuzzy;
-		
+
+		int ScanKeyword(const char *keyword);
+
 %}
 
 %union {
@@ -47,7 +49,7 @@
     char *text;
 }
 
-%token CREATE FUZZY PREDICATE ON AS COMMA DOTDOT LEFTP RIGHTP INFINIT
+%token CREATE FUZZY PREDICATE ON AS COMMA DOTDOT LEFTP RIGHTP INFINIT INNER JOIN LEFT RIGHT
         DROP EQUAL SELECT WHERE FROM AND OR ORDER BY ASC DESC WITH CALIBRATION
 %token <text> PARAMETER 
 %type <text> Param Param_select Param_from List_where List_order SelectStmt
@@ -322,6 +324,24 @@ Param_from:
                 strcat($$," ");
                 strcat($$,$2);
             }
+						| Param_from INNER JOIN Param {
+								strcat($$," INNER JOIN ");
+								strcat($$,$4);
+						}
+						| Param_from LEFT JOIN Param {
+								strcat($$," LEFT JOIN ");
+								strcat($$,$4);
+						}
+						| Param_from RIGHT JOIN Param {
+								strcat($$," RIGHT JOIN ");
+								strcat($$,$4);
+						}
+						| Param_from ON Param EQUAL Param{
+								strcat($$," ON ");
+								strcat($$,$3);
+								strcat($$," = ");
+								strcat($$,$5);
+						}
 ;
 
 
@@ -437,5 +457,43 @@ List_order:
 
 %%
 void yyerror (char *s) {elog (ERROR, "%s\n", s);}
+
+int ScanKeyword(const char *word){
+        int i,len;
+
+    Keyword keyfuzzywords[] = {
+                    {"AND",AND},
+                    {"AS",AS},
+                    {"CREATE",CREATE},
+                    {"DROP",DROP},
+                    {"FROM",FROM},
+                    {"FUZZY",FUZZY},
+                    {"INFINIT",INFINIT},
+                    {"ON",ON},
+                    {"OR",OR},
+                    {"PREDICATE",PREDICATE},
+                    {"SELECT",SELECT},
+                    {"WHERE",WHERE},
+                    {"ORDER",ORDER},
+                    {"BY",BY},
+                    {"ASC",ASC},
+                    {"DESC",DESC},
+                    {"WITH",WITH},
+                    {"CALIBRATION",CALIBRATION},
+										{"INNER",INNER},
+										{"JOIN",JOIN},
+										{"LEFT",LEFT},
+										{"RIGHT",RIGHT}
+    };
+
+    len=sizeof(keyfuzzywords)/sizeof(Keyword);
+
+    for(i=0;i<len;i++){
+            if (strcmp(keyfuzzywords[i].name,word)==0)
+                    return keyfuzzywords[i].value;
+    }
+
+    return 0;
+}
 
 #include "scan.c"

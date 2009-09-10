@@ -8,8 +8,6 @@ char *create_fuzzy_pred(const char *name,
 
 char *drop_fuzzy_pred(const char *name);
 
-int ScanKeyword(const char *keyword);
-
 typedef struct Keyword
 {
     const char *name;	/* name of keyword */

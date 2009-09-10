@@ -33,7 +33,7 @@ sqlf(PG_FUNCTION_ARGS)
     AttInMetadata       *attinmeta;
     SPITupleTable       *spi_tuptable;
     TupleDesc           spi_tupdesc;
-    bool		firstpass;
+    bool								firstpass;
     char                *lastrowid;
     int                 i;
     int                 num_categories;

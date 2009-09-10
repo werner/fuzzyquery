@@ -7,7 +7,7 @@
 n      		[0-9]+
 integer		[+-]?{n}
 real   		[+-]?({n}\.{n})
-word			[A-Za-z\_\-\?\+\*\.]+
+word			[A-Za-z\_\-\?\+\*\.0-9]+
 param			({integer}|{real}|{word})
 
 %%

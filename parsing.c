@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "parsing.h"
-#include "gram.h"
 
 #include "postgres.h"
 #include "executor/spi.h"
@@ -107,38 +106,4 @@ char *translate_fuzzy_preds(char *result,char *field,const char *value,char **mi
     SPI_finish();
     pfree(fp_sqlf);
     return result;
-}
-
-int ScanKeyword(const char *word){
-        int i,len;
-
-    Keyword keyfuzzywords[] = {
-                    {"AND",AND},
-                    {"AS",AS},
-                    {"CREATE",CREATE},
-                    {"DROP",DROP},
-                    {"FROM",FROM},
-                    {"FUZZY",FUZZY},
-                    {"INFINIT",INFINIT},
-                    {"ON",ON},
-                    {"OR",OR},
-                    {"PREDICATE",PREDICATE},
-                    {"SELECT",SELECT},
-                    {"WHERE",WHERE},
-                    {"ORDER",ORDER},
-                    {"BY",BY},
-                    {"ASC",ASC},
-                    {"DESC",DESC},
-                    {"WITH",WITH},
-                    {"CALIBRATION",CALIBRATION}
-    };
-
-    len=sizeof(keyfuzzywords)/sizeof(Keyword);
-
-    for(i=0;i<len;i++){
-            if (strcmp(keyfuzzywords[i].name,word)==0)
-                    return keyfuzzywords[i].value;
-    }
-
-    return 0;
 }
