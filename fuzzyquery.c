@@ -51,7 +51,6 @@ sqlf(PG_FUNCTION_ARGS)
 
     sql=result;
 
-    elog(INFO,"%s\n",sql);
     /* check to see if caller supports us returning a tuplestore */
     if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
             ereport(ERROR,
