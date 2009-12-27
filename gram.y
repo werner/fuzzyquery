@@ -71,7 +71,7 @@ query:  /* empty string */
 			for (i=0;i<real_length;i++)
 				len+=strlen(fuzzy_query[i]);
 			len+=20;
-			if(filter_times==1 || real_length==1){
+			if(filter_times==1 || real_length==1 || count_membdg==1){
 			
 		        sql=(char *)palloc(sizeof(char *)*len);
 		        strcpy(sql,"");
@@ -120,8 +120,8 @@ query:  /* empty string */
 						for (j=0;j<count_membdg;j++)
 							strcat(calib_where,args_membdg[j]);
 
-						if (calib_where[strlen(calib_where)-1]!=')')
-							strcat(calib_where,") ");
+						//if (calib_where[strlen(calib_where)-1]!=')')
+						strcat(calib_where,") ");
 						
 						strcat(sql,calib_where);
 						strcat(sql," as membdg ");
@@ -233,7 +233,6 @@ and with_query is:
 
     with_query_name [ ( column_name [, ...] ) ] AS ( select )
 
-    WITH CALIBRATION
 */
 
 /* Missing pretty much everything, it parses the basic select */
@@ -374,14 +373,7 @@ List_where:
 			&membdg_values.second_core,&membdg_values.max,&is_fuzzy);
 
 			if (is_fuzzy==1){
-				
-				//if there's more than one field and ignoring the parenthesis
-				if (filter_times>0 && strcmp(sub_sqlf_filters[filter_times-1],"(")!=0 ){
-					args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
-					snprintf(args_membdg[count_membdg],2,",");
-					count_membdg++;
-				}
-				
+								
 				//This is used to get the membership degree
 				len=strlen(field)+100;
 				args_membdg[count_membdg]=(char *)palloc(sizeof(char *)*len);
@@ -404,6 +396,9 @@ List_where:
 
 			//I add a comma to args_membdg to separate the memberships degrees
 			fop=LEAST;
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
+			snprintf(args_membdg[count_membdg],2,",");
+			count_membdg++;
 
 			//This I add an AND to the sub_sqlf_filters array
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);
@@ -415,12 +410,18 @@ List_where:
 			strcpy(field,$3);
 		}
 		| List_where RIGHTP AND Param {
-			field=(char *)palloc(sizeof(char *)*strlen($4));
-			strcpy(field,$4);
+
+			fop=LEAST;
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
+			snprintf(args_membdg[count_membdg],2,",");
+			count_membdg++;
 
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+6);
 			snprintf(sub_sqlf_filters[filter_times],6,") AND ");
 			filter_times++;
+
+			field=(char *)palloc(sizeof(char *)*strlen($4));
+			strcpy(field,$4);
 		}
 		| List_where OR Param {
 
@@ -437,12 +438,18 @@ List_where:
 			strcpy(field,$3);
 		}
 		| List_where RIGHTP OR Param {
-			field=(char *)palloc(sizeof(char *)*strlen($4));
-			strcpy(field,$4);
 
+			fop=GREATEST;
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
+			snprintf(args_membdg[count_membdg],2,",");
+			count_membdg++;
+		
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+6);
 			snprintf(sub_sqlf_filters[filter_times],6,") OR ");
 			filter_times++;
+
+			field=(char *)palloc(sizeof(char *)*strlen($4));
+			strcpy(field,$4);
 		}
 		| List_where RIGHTP {
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+2);

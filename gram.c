@@ -508,10 +508,10 @@ static const yytype_int8 yyrhs[] =
 static const yytype_uint16 yyrline[] =
 {
        0,    59,    59,    60,   174,   175,   176,   177,   178,   182,
-     187,   192,   199,   242,   259,   276,   285,   295,   298,   299,
-     303,   307,   314,   315,   319,   323,   327,   331,   335,   339,
-     349,   354,   362,   403,   417,   425,   439,   447,   456,   457,
-     461,   465
+     187,   192,   199,   241,   258,   275,   284,   294,   297,   298,
+     302,   306,   313,   314,   318,   322,   326,   330,   334,   338,
+     348,   353,   361,   395,   412,   426,   440,   454,   463,   464,
+     468,   472
 };
 #endif
 
@@ -1487,7 +1487,7 @@ yyreduce:
 			for (i=0;i<real_length;i++)
 				len+=strlen(fuzzy_query[i]);
 			len+=20;
-			if(filter_times==1 || real_length==1){
+			if(filter_times==1 || real_length==1 || count_membdg==1){
 			
 		        sql=(char *)palloc(sizeof(char *)*len);
 		        strcpy(sql,"");
@@ -1536,8 +1536,8 @@ yyreduce:
 						for (j=0;j<count_membdg;j++)
 							strcat(calib_where,args_membdg[j]);
 
-						if (calib_where[strlen(calib_where)-1]!=')')
-							strcat(calib_where,") ");
+						//if (calib_where[strlen(calib_where)-1]!=')')
+						strcat(calib_where,") ");
 						
 						strcat(sql,calib_where);
 						strcat(sql," as membdg ");
@@ -1647,7 +1647,7 @@ yyreduce:
   case 13:
 
 /* Line 1455 of yacc.c  */
-#line 243 "gram.y"
+#line 242 "gram.y"
     {
                 int len;
                 len=strlen((yyvsp[(2) - (4)].text))+10;
@@ -1668,7 +1668,7 @@ yyreduce:
   case 14:
 
 /* Line 1455 of yacc.c  */
-#line 260 "gram.y"
+#line 259 "gram.y"
     {
 				int i,len=0;
 				
@@ -1689,7 +1689,7 @@ yyreduce:
   case 15:
 
 /* Line 1455 of yacc.c  */
-#line 277 "gram.y"
+#line 276 "gram.y"
     {
                 int len;
                 len=strlen((yyvsp[(4) - (4)].text))+2;
@@ -1702,7 +1702,7 @@ yyreduce:
   case 16:
 
 /* Line 1455 of yacc.c  */
-#line 286 "gram.y"
+#line 285 "gram.y"
     {
                 int len;
                 len=strlen((yyvsp[(4) - (4)].text))+2;
@@ -1715,21 +1715,21 @@ yyreduce:
   case 17:
 
 /* Line 1455 of yacc.c  */
-#line 295 "gram.y"
+#line 294 "gram.y"
     { (yyval.text) = (yyvsp[(1) - (1)].text); ;}
     break;
 
   case 18:
 
 /* Line 1455 of yacc.c  */
-#line 298 "gram.y"
+#line 297 "gram.y"
     { (yyval.text) = (yyvsp[(1) - (1)].text); ;}
     break;
 
   case 19:
 
 /* Line 1455 of yacc.c  */
-#line 299 "gram.y"
+#line 298 "gram.y"
     {
                 strcat((yyval.text),", ");
                 strcat((yyval.text),(yyvsp[(3) - (3)].text));
@@ -1739,7 +1739,7 @@ yyreduce:
   case 20:
 
 /* Line 1455 of yacc.c  */
-#line 303 "gram.y"
+#line 302 "gram.y"
     {
                 strcat((yyval.text)," AS ");
                 strcat((yyval.text),(yyvsp[(3) - (3)].text));
@@ -1749,7 +1749,7 @@ yyreduce:
   case 21:
 
 /* Line 1455 of yacc.c  */
-#line 307 "gram.y"
+#line 306 "gram.y"
     {
                 strcat((yyval.text)," ");
                 strcat((yyval.text),(yyvsp[(2) - (2)].text));
@@ -1759,14 +1759,14 @@ yyreduce:
   case 22:
 
 /* Line 1455 of yacc.c  */
-#line 314 "gram.y"
+#line 313 "gram.y"
     { (yyval.text) = (yyvsp[(1) - (1)].text);;}
     break;
 
   case 23:
 
 /* Line 1455 of yacc.c  */
-#line 315 "gram.y"
+#line 314 "gram.y"
     {
 			strcat((yyval.text),", ");
 			strcat((yyval.text),(yyvsp[(3) - (3)].text));
@@ -1776,7 +1776,7 @@ yyreduce:
   case 24:
 
 /* Line 1455 of yacc.c  */
-#line 319 "gram.y"
+#line 318 "gram.y"
     {
 			strcat((yyval.text)," AS ");
 			strcat((yyval.text),(yyvsp[(3) - (3)].text));
@@ -1786,7 +1786,7 @@ yyreduce:
   case 25:
 
 /* Line 1455 of yacc.c  */
-#line 323 "gram.y"
+#line 322 "gram.y"
     {
 			strcat((yyval.text)," ");
 			strcat((yyval.text),(yyvsp[(2) - (2)].text));
@@ -1796,7 +1796,7 @@ yyreduce:
   case 26:
 
 /* Line 1455 of yacc.c  */
-#line 327 "gram.y"
+#line 326 "gram.y"
     {
 			strcat((yyval.text)," INNER JOIN ");
 			strcat((yyval.text),(yyvsp[(4) - (4)].text));
@@ -1806,7 +1806,7 @@ yyreduce:
   case 27:
 
 /* Line 1455 of yacc.c  */
-#line 331 "gram.y"
+#line 330 "gram.y"
     {
 			strcat((yyval.text)," LEFT JOIN ");
 			strcat((yyval.text),(yyvsp[(4) - (4)].text));
@@ -1816,7 +1816,7 @@ yyreduce:
   case 28:
 
 /* Line 1455 of yacc.c  */
-#line 335 "gram.y"
+#line 334 "gram.y"
     {
 			strcat((yyval.text)," RIGHT JOIN ");
 			strcat((yyval.text),(yyvsp[(4) - (4)].text));
@@ -1826,7 +1826,7 @@ yyreduce:
   case 29:
 
 /* Line 1455 of yacc.c  */
-#line 339 "gram.y"
+#line 338 "gram.y"
     {
 			strcat((yyval.text)," ON ");
 			strcat((yyval.text),(yyvsp[(3) - (5)].text));
@@ -1838,7 +1838,7 @@ yyreduce:
   case 30:
 
 /* Line 1455 of yacc.c  */
-#line 349 "gram.y"
+#line 348 "gram.y"
     {
 			(yyval.text)=(yyvsp[(1) - (1)].text);
 			field=(char *)palloc(sizeof(char *)*strlen((yyvsp[(1) - (1)].text)));
@@ -1849,7 +1849,7 @@ yyreduce:
   case 31:
 
 /* Line 1455 of yacc.c  */
-#line 354 "gram.y"
+#line 353 "gram.y"
     {
 			field=(char *)palloc(sizeof(char *)*strlen((yyvsp[(2) - (2)].text)));
 			strcpy(field,(yyvsp[(2) - (2)].text));
@@ -1863,7 +1863,7 @@ yyreduce:
   case 32:
 
 /* Line 1455 of yacc.c  */
-#line 362 "gram.y"
+#line 361 "gram.y"
     {
 			int len;
 			char *str_filter;
@@ -1879,14 +1879,7 @@ yyreduce:
 			&membdg_values.second_core,&membdg_values.max,&is_fuzzy);
 
 			if (is_fuzzy==1){
-				
-				//if there's more than one field and ignoring the parenthesis
-				if (filter_times>0 && strcmp(sub_sqlf_filters[filter_times-1],"(")!=0 ){
-					args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
-					snprintf(args_membdg[count_membdg],2,",");
-					count_membdg++;
-				}
-				
+								
 				//This is used to get the membership degree
 				len=strlen(field)+100;
 				args_membdg[count_membdg]=(char *)palloc(sizeof(char *)*len);
@@ -1910,11 +1903,14 @@ yyreduce:
   case 33:
 
 /* Line 1455 of yacc.c  */
-#line 403 "gram.y"
+#line 395 "gram.y"
     {
 
 			//I add a comma to args_membdg to separate the memberships degrees
 			fop=LEAST;
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
+			snprintf(args_membdg[count_membdg],2,",");
+			count_membdg++;
 
 			//This I add an AND to the sub_sqlf_filters array
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);
@@ -1930,21 +1926,27 @@ yyreduce:
   case 34:
 
 /* Line 1455 of yacc.c  */
-#line 417 "gram.y"
+#line 412 "gram.y"
     {
-			field=(char *)palloc(sizeof(char *)*strlen((yyvsp[(4) - (4)].text)));
-			strcpy(field,(yyvsp[(4) - (4)].text));
+
+			fop=LEAST;
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
+			snprintf(args_membdg[count_membdg],2,",");
+			count_membdg++;
 
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+6);
 			snprintf(sub_sqlf_filters[filter_times],6,") AND ");
 			filter_times++;
+
+			field=(char *)palloc(sizeof(char *)*strlen((yyvsp[(4) - (4)].text)));
+			strcpy(field,(yyvsp[(4) - (4)].text));
 		;}
     break;
 
   case 35:
 
 /* Line 1455 of yacc.c  */
-#line 425 "gram.y"
+#line 426 "gram.y"
     {
 
 			fop=GREATEST;
@@ -1964,21 +1966,27 @@ yyreduce:
   case 36:
 
 /* Line 1455 of yacc.c  */
-#line 439 "gram.y"
+#line 440 "gram.y"
     {
-			field=(char *)palloc(sizeof(char *)*strlen((yyvsp[(4) - (4)].text)));
-			strcpy(field,(yyvsp[(4) - (4)].text));
 
+			fop=GREATEST;
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
+			snprintf(args_membdg[count_membdg],2,",");
+			count_membdg++;
+		
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+6);
 			snprintf(sub_sqlf_filters[filter_times],6,") OR ");
 			filter_times++;
+
+			field=(char *)palloc(sizeof(char *)*strlen((yyvsp[(4) - (4)].text)));
+			strcpy(field,(yyvsp[(4) - (4)].text));
 		;}
     break;
 
   case 37:
 
 /* Line 1455 of yacc.c  */
-#line 447 "gram.y"
+#line 454 "gram.y"
     {
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+2);
 			snprintf(sub_sqlf_filters[filter_times],2,")");
@@ -1989,14 +1997,14 @@ yyreduce:
   case 38:
 
 /* Line 1455 of yacc.c  */
-#line 456 "gram.y"
+#line 463 "gram.y"
     { (yyval.text)=(yyvsp[(1) - (1)].text); ;}
     break;
 
   case 39:
 
 /* Line 1455 of yacc.c  */
-#line 457 "gram.y"
+#line 464 "gram.y"
     {
                 strcat((yyval.text),", ");
                 strcat((yyval.text),(yyvsp[(3) - (3)].text));
@@ -2006,7 +2014,7 @@ yyreduce:
   case 40:
 
 /* Line 1455 of yacc.c  */
-#line 461 "gram.y"
+#line 468 "gram.y"
     { 
                 strcat((yyval.text)," ASC");
                 strcat((yyval.text),(yyvsp[(1) - (2)].text));
@@ -2016,7 +2024,7 @@ yyreduce:
   case 41:
 
 /* Line 1455 of yacc.c  */
-#line 465 "gram.y"
+#line 472 "gram.y"
     { 
                 strcat((yyval.text)," DESC");
                 strcat((yyval.text),(yyvsp[(1) - (2)].text));
@@ -2026,7 +2034,7 @@ yyreduce:
 
 
 /* Line 1455 of yacc.c  */
-#line 2030 "gram.c"
+#line 2038 "gram.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2238,7 +2246,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 471 "gram.y"
+#line 478 "gram.y"
 
 void yyerror (char *s) {elog (ERROR, "%s\n", s);}
 

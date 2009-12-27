@@ -229,16 +229,16 @@ membdg(PG_FUNCTION_ARGS)
 
     str_result=(char *)palloc(sizeof(double));
 
-    snprintf(str_result,sizeof(double),"%.2f",result);
+    snprintf(str_result,sizeof(double),"%.2f",fabs(result));
 
     return_value=atof(str_result);
 
     pfree(str_result);
-
+	
     //I do this to prevent a membership degree bigger than 1.0
-    if (fabs(return_value)>1.0)
-        return 0;
-    else
-        return Float8GetDatum(fabs(return_value));
+    if (return_value>1.0)
+        return Float8GetDatum(0);
+    else  
+        return Float8GetDatum(return_value);
 
 }
