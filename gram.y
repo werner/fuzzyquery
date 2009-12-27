@@ -13,21 +13,21 @@
     int real_length=0;
     char *field;
     char *fuzzy_query[QUERY_LENGTH];
-		#define DDL_FP_CLAUSE 0
+	#define DDL_FP_CLAUSE 0
 		
-		//To know if it is an AND or an OR in the query
-		#define LEAST 1
-		#define GREATEST 2
-		int fop;
+	//To know if it is an AND or an OR in the query
+	#define LEAST 1
+	#define GREATEST 2
+	int fop;
 
-		enum sql_type {SELECT_CLAUSE,FROM_CLAUSE,WHERE_CLAUSE,ORDER_BY_CLAUSE,CALIBRATION_CLAUSE};
+	enum sql_type {SELECT_CLAUSE,FROM_CLAUSE,WHERE_CLAUSE,ORDER_BY_CLAUSE,CALIBRATION_CLAUSE};
 
-		char *sub_sqlf_filters[1024];
-		char *args_membdg[1024];
-
-		int filter_times=0;
-
-		char *select_items;
+	char *sub_sqlf_filters[1024];
+	char *args_membdg[1024];
+	
+	int count_membdg=0;
+	int filter_times=0;
+	char *select_items;
 
     typedef struct Membdg_values {
         char *min;
@@ -38,9 +38,9 @@
 
     Membdg_values membdg_values;
 
-		int *is_fuzzy;
+	int *is_fuzzy;
 
-		int ScanKeyword(const char *keyword);
+	int ScanKeyword(const char *keyword);
 
 %}
 
@@ -56,148 +56,150 @@
 
 %%
 
-
 query:  /* empty string */
       |  query command
         {
-          int   i=0;
-					int 	j=0;
-          char  *sql;
-          int   len;
- 					//This variable is used to add the membership degree function
-					//in the where clause 
-					char	*calib_where;
+			int   i=0;
+			int   j=0;
+			char  *sql;
+			int   len;
+ 			//This variable is used to add the membership degree function
+			//in the where clause 
+			char	*calib_where;
 
-          len=0;
-          for (i=0;i<real_length;i++)
-            len+=strlen(fuzzy_query[i]);
-					len+=20;
-					if(filter_times==1 || real_length==1){
+			len=0;
+			for (i=0;i<real_length;i++)
+				len+=strlen(fuzzy_query[i]);
+			len+=20;
+			if(filter_times==1 || real_length==1){
+			
 		        sql=(char *)palloc(sizeof(char *)*len);
-		        strcpy(sql,""); // I don't know why but if I don't do this, sql concatenates the last query
+		        strcpy(sql,"");
 
-	          for (i=0;i<real_length;i++){
-							if (i==FROM_CLAUSE){
-								strcat(sql,args_membdg[0]);
-								strcat(sql," membdg");
-							}
+				for (i=0;i<real_length;i++){
+					if (i==FROM_CLAUSE){
+						strcat(sql,args_membdg[0]);
+						strcat(sql," as membdg");
+					}
 
-	            strcat(sql,fuzzy_query[i]);
+					strcat(sql,fuzzy_query[i]);
 
-							if (i==WHERE_CLAUSE)
-									strcat(sql," ORDER BY membdg");
-						}
-					}else{
+					if (i==WHERE_CLAUSE)
+						strcat(sql," ORDER BY membdg");
+				}
+			}else{
 
-						for(i=0;i<filter_times;i++){
-							len+=strlen(sub_sqlf_filters[i]);
-							if (args_membdg[i]!='\0')
-								len+=strlen(args_membdg[i]);
-							len+=150;
-						}
+				for(i=0;i<filter_times;i++){
+					len+=strlen(sub_sqlf_filters[i]);
+					len+=150;
+				}
 
-						len+=strlen(fuzzy_query[SELECT_CLAUSE])+strlen(select_items);
+				for(i=0;i<count_membdg;i++)
+					len+=strlen(args_membdg[i]);
+				
+				len+=strlen(fuzzy_query[SELECT_CLAUSE])+strlen(select_items);
 
 		        sql=(char *)palloc(sizeof(char *)*len);
-		        strcpy(sql,""); // I don't know why but if I don't do this, sql concatenates the last query
+		        strcpy(sql,"");
 
-						len=0;
-	          for (i=0;i<real_length;i++){
-							if (i==FROM_CLAUSE){
+				len=0;
+				for (i=0;i<real_length;i++){
+					if (i==FROM_CLAUSE){
 
-								for (j=0;j<filter_times;j++)
-									if (args_membdg[j]!='\0')
-										len+=strlen(args_membdg[j]);
+						for (j=0;j<count_membdg;j++)
+							len+=strlen(args_membdg[j]);
 
-								calib_where=(char *)palloc(sizeof(char *)*len);
+						calib_where=(char *)palloc(sizeof(char *)*len);
+						strcpy(calib_where,"");
+						
+						if (fop==LEAST)
+							strcpy(calib_where,"LEAST(");
+						else if (fop==GREATEST)
+							strcpy(calib_where,"GREATEST(");
 
-								if (fop==LEAST)
-									strcpy(calib_where,"LEAST(");
-								else if (fop==GREATEST)
-									strcpy(calib_where,"GREATEST(");
-								
-								for (j=0;j<filter_times;j++)
-									if (args_membdg[j]!='\0')
-										strcat(calib_where,args_membdg[j]);
-								
-								strcat(calib_where,") ");
-								strcat(sql,calib_where);
-								strcat(sql," membdg ");
+						for (j=0;j<count_membdg;j++)
+							strcat(calib_where,args_membdg[j]);
 
-							}
+						if (calib_where[strlen(calib_where)-1]!=')')
+							strcat(calib_where,") ");
+						
+						strcat(sql,calib_where);
+						strcat(sql," as membdg ");
 
-							//This is to prevent adding the WITH CALIBRATION at the end of the query
-							if (i!=CALIBRATION_CLAUSE)
+					}
+
+					//This is to prevent adding the WITH CALIBRATION at the end of the query
+					if (i!=CALIBRATION_CLAUSE)
 	            	strcat(sql,fuzzy_query[i]);
 
-							if (i==WHERE_CLAUSE){
-									if (real_length==5){
-										strcat(sql," AND ");
-										strcat(sql,calib_where);
-										strcat(sql,"=");
-										strcat(sql,fuzzy_query[CALIBRATION_CLAUSE]);
-									}
-									strcat(sql," ORDER BY membdg");
-							}
-
+					if (i==WHERE_CLAUSE){
+						if (real_length==5){
+							strcat(sql," AND ");
+							strcat(sql,calib_where);
+							strcat(sql,"=");
+							strcat(sql,fuzzy_query[CALIBRATION_CLAUSE]);
 						}
-						pfree(calib_where);
-
+						strcat(sql," ORDER BY membdg");
 					}
 
-          *((void **)result) = sql;
+				}
+				pfree(calib_where);
 
+			}
 
-					//Cleaning
-          pfree(sql);
-					if (real_length>1)
-						pfree(select_items);
-          for (i=0;i<real_length;i++){
-						strcpy(fuzzy_query[i],"");            
-						pfree(fuzzy_query[i]);
-					}
-          for (i=0;i<filter_times;i++){
-						if (args_membdg[i]!='\0'){
-							strcpy(args_membdg[i],"");
-							pfree(args_membdg[i]);
-            }
-						strcpy(sub_sqlf_filters[i],"");						
-				  	pfree(sub_sqlf_filters[i]);
-					}
-					filter_times=0;
-					real_length=0;
+			*((void **)result) = sql;
+
+			//Cleaning
+			pfree(sql);
+			if (real_length>1)
+				pfree(select_items);
+			for (i=0;i<real_length;i++){
+				strcpy(fuzzy_query[i],"");            
+				pfree(fuzzy_query[i]);
+			}
+			for (i=0;i<count_membdg;i++){
+				strcpy(args_membdg[i],"");
+				pfree(args_membdg[i]);
+			}
+			for (i=0;i<filter_times;i++){
+				strcpy(sub_sqlf_filters[i],"");						
+				pfree(sub_sqlf_filters[i]);
+			}
+			count_membdg=0;
+			filter_times=0;
+			real_length=0;
         }
 ;
 
 command: '\n'
-            | CreateFuzzyPredStmt { real_length=1; }
-            | DropFuzzyPredStmt { real_length=1; }
-            | SelectStmt
-            | error '\n'  { yyerrok;}
+        | CreateFuzzyPredStmt { real_length=1; }
+        | DropFuzzyPredStmt { real_length=1; }
+        | SelectStmt 
+        | error '\n'  { yyerrok;}
 ;
 
 CreateFuzzyPredStmt:
-            CREATE FUZZY PREDICATE Param ON Param DOTDOT Param AS LEFTP Param COMMA Param COMMA Param COMMA Param RIGHTP
-            {
-                    fuzzy_query[DDL_FP_CLAUSE]=create_fuzzy_pred($4,$6,$8,$11,$13,$15,$17);
-            }
-            |
-            CREATE FUZZY PREDICATE Param ON Param DOTDOT Param AS LEFTP INFINIT COMMA INFINIT COMMA Param COMMA Param RIGHTP
-            {
-                    fuzzy_query[DDL_FP_CLAUSE]=create_fuzzy_pred($4,$6,$8,"INFINIT","INFINIT",$15,$17);
-            }
-            |
-            CREATE FUZZY PREDICATE Param ON Param DOTDOT Param AS LEFTP Param COMMA Param COMMA INFINIT COMMA INFINIT RIGHTP
-            {
-                    fuzzy_query[DDL_FP_CLAUSE]=create_fuzzy_pred($4,$6,$8,$11,$13,"INFINIT","INFINIT");
-            }
+        CREATE FUZZY PREDICATE Param ON Param DOTDOT Param AS LEFTP Param COMMA Param COMMA Param COMMA Param RIGHTP
+        {
+            fuzzy_query[DDL_FP_CLAUSE]=create_fuzzy_pred($4,$6,$8,$11,$13,$15,$17);
+        }
+        |
+		CREATE FUZZY PREDICATE Param ON Param DOTDOT Param AS LEFTP INFINIT COMMA INFINIT COMMA Param COMMA Param RIGHTP
+		{
+			fuzzy_query[DDL_FP_CLAUSE]=create_fuzzy_pred($4,$6,$8,"INFINIT","INFINIT",$15,$17);
+		}
+		|
+		CREATE FUZZY PREDICATE Param ON Param DOTDOT Param AS LEFTP Param COMMA Param COMMA INFINIT COMMA INFINIT RIGHTP
+		{
+			fuzzy_query[DDL_FP_CLAUSE]=create_fuzzy_pred($4,$6,$8,$11,$13,"INFINIT","INFINIT");
+		}
 ;
 
 DropFuzzyPredStmt:
-            DROP FUZZY PREDICATE Param
-            {
-                    fuzzy_query[DDL_FP_CLAUSE]=drop_fuzzy_pred($4);
-            }
+		DROP FUZZY PREDICATE Param
+		{
+			fuzzy_query[DDL_FP_CLAUSE]=drop_fuzzy_pred($4);
+		}
 ;
 
 /**************SELECT STATEMENT**********************************/
@@ -242,33 +244,31 @@ SelectStmt:
                 int len;
                 len=strlen($2)+10;
                 fuzzy_query[SELECT_CLAUSE]=(char *)palloc(sizeof(char *)*len);
-								select_items=(char *)palloc(sizeof(char *)*len);
-								snprintf(select_items,len,"%s",$2);
+				select_items=(char *)palloc(sizeof(char *)*len);
+				snprintf(select_items,len,"%s",$2);
 
                 len=strlen($4)+10;
                 fuzzy_query[FROM_CLAUSE]=(char *)palloc(sizeof(char *)*len);
 							
-                snprintf(fuzzy_query[SELECT_CLAUSE],(strlen($2)+40),
-                                        " SELECT %s,",$2);
-                snprintf(fuzzy_query[FROM_CLAUSE],(strlen($4)+60),
-                                        " FROM %s ",$4);
+                snprintf(fuzzy_query[SELECT_CLAUSE],(strlen($2)+40)," SELECT %s,",$2);
+                snprintf(fuzzy_query[FROM_CLAUSE],(strlen($4)+60)," FROM %s ",$4);
 
                 real_length=2;
             }
             |
             SelectStmt WHERE List_where
             {
-								int i,len=0;
-								
-								for(i=0;i<filter_times;i++)
-									len+=strlen(sub_sqlf_filters[i]);
+				int i,len=0;
+				
+				for(i=0;i<filter_times;i++)
+					len+=strlen(sub_sqlf_filters[i]);
 
-								len+=10;
+				len+=10;
                 fuzzy_query[WHERE_CLAUSE]=(char *)palloc(sizeof(char *)+len);
                 strcpy(fuzzy_query[WHERE_CLAUSE],"WHERE ");
 
-								for(i=0;i<filter_times;i++)
-									strcat(fuzzy_query[WHERE_CLAUSE],sub_sqlf_filters[i]);
+				for(i=0;i<filter_times;i++)
+					strcat(fuzzy_query[WHERE_CLAUSE],sub_sqlf_filters[i]);
 							
                 real_length=3;
             }
@@ -311,132 +311,145 @@ Param_select:
 ;
 
 Param_from:
-            Param { $$ = $1;}
-            | Param_from COMMA Param {
-                strcat($$,", ");
-                strcat($$,$3);
-            }
-            | Param_from AS Param {
-                strcat($$," AS ");
-                strcat($$,$3);
-            }
-            | Param_from Param {
-                strcat($$," ");
-                strcat($$,$2);
-            }
-						| Param_from INNER JOIN Param {
-								strcat($$," INNER JOIN ");
-								strcat($$,$4);
-						}
-						| Param_from LEFT JOIN Param {
-								strcat($$," LEFT JOIN ");
-								strcat($$,$4);
-						}
-						| Param_from RIGHT JOIN Param {
-								strcat($$," RIGHT JOIN ");
-								strcat($$,$4);
-						}
-						| Param_from ON Param EQUAL Param{
-								strcat($$," ON ");
-								strcat($$,$3);
-								strcat($$," = ");
-								strcat($$,$5);
-						}
+		Param { $$ = $1;}
+		| Param_from COMMA Param {
+			strcat($$,", ");
+			strcat($$,$3);
+		}
+		| Param_from AS Param {
+			strcat($$," AS ");
+			strcat($$,$3);
+		}
+		| Param_from Param {
+			strcat($$," ");
+			strcat($$,$2);
+		}
+		| Param_from INNER JOIN Param {
+			strcat($$," INNER JOIN ");
+			strcat($$,$4);
+		}
+		| Param_from LEFT JOIN Param {
+			strcat($$," LEFT JOIN ");
+			strcat($$,$4);
+		}
+		| Param_from RIGHT JOIN Param {
+			strcat($$," RIGHT JOIN ");
+			strcat($$,$4);
+		}
+		| Param_from ON Param EQUAL Param{
+			strcat($$," ON ");
+			strcat($$,$3);
+			strcat($$," = ");
+			strcat($$,$5);
+		}
 ;
 
 
 List_where:
-            Param {
-                $$=$1;
-                field=(char *)palloc(sizeof(char *)*strlen($1));
-                strcpy(field,$1);
-            }
-            | LEFTP Param {
-                strcat($$," (");
-                strcat($$,$2);
-                field=(char *)palloc(sizeof(char *)*strlen($2));
-                strcpy(field,$2);
-            }
-            | List_where EQUAL Param {
-            		int len;
-						    char *str_filter;
-                char *str_result;
+		Param {
+			$$=$1;
+			field=(char *)palloc(sizeof(char *)*strlen($1));
+			strcpy(field,$1);
+		}
+		| LEFTP Param {
+			field=(char *)palloc(sizeof(char *)*strlen($2));
+			strcpy(field,$2);
+							
+			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+2);
+			snprintf(sub_sqlf_filters[filter_times],2,"(");
+			filter_times++;
+		}
+		| List_where EQUAL Param {
+			int len;
+			char *str_filter;
+			char *str_result;
+			
+			//I use str_filter to save the translated filter from sqlf to sql
+			len=strlen(field)+strlen($3)+15; //15 is the length of "%s > %f AND %s < %f"
+			str_result=(char *)palloc(sizeof(char *)*(len));
 
-								//I use str_filter to save the translated filter from sqlf to sql
-                len=strlen(field)+strlen($3)+15; //15 is the length of "%s > %f AND %s < %f"
-                str_result=(char *)palloc(sizeof(char *)*(len));
+			is_fuzzy=0;
+			str_filter=(char *)palloc(sizeof(char *)*(len));
+			str_filter=translate_fuzzy_preds(str_result,field,$3,&membdg_values.min,&membdg_values.first_core,
+			&membdg_values.second_core,&membdg_values.max,&is_fuzzy);
 
-								is_fuzzy=0;
-                str_filter=(char *)palloc(sizeof(char *)*(len));
-                str_filter=translate_fuzzy_preds(str_result,field,$3,
-                            &membdg_values.min,&membdg_values.first_core,
-														&membdg_values.second_core,&membdg_values.max,&is_fuzzy);
+			if (is_fuzzy==1){
+				
+				//if there's more than one field and ignoring the parenthesis
+				if (filter_times>0 && strcmp(sub_sqlf_filters[filter_times-1],"(")!=0 ){
+					args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
+					snprintf(args_membdg[count_membdg],2,",");
+					count_membdg++;
+				}
+				
+				//This is used to get the membership degree
+				len=strlen(field)+100;
+				args_membdg[count_membdg]=(char *)palloc(sizeof(char *)*len);
+				snprintf(args_membdg[count_membdg],len,
+						"fuzzy.membdg(%s,'%s'::text,'%s'::text,'%s'::text,'%s'::text)",field,
+						membdg_values.min,membdg_values.first_core,membdg_values.second_core,membdg_values.max);
+			
+				count_membdg++;
+			}
+			len=strlen(str_filter);
 
-								if (is_fuzzy==1){
-									if (filter_times>0){
-                		args_membdg[filter_times-1]=(char *)palloc(sizeof(char *)+2);
-                		snprintf(args_membdg[filter_times-1],2,",");
-									}
+			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)*len*2);
 
-									//This is used to get the membership degree
-		              len=strlen(field)+100;
-		              args_membdg[filter_times]=(char *)palloc(sizeof(char *)*len);
-		              snprintf(args_membdg[filter_times],len,
-												"fuzzy.membdg(%s,'%s'::text,'%s'::text,'%s'::text,'%s'::text)",field,
-													membdg_values.min,membdg_values.first_core,membdg_values.second_core,membdg_values.max);
+			snprintf(sub_sqlf_filters[filter_times],(len*2),"%s",str_filter);
 
-								}else{
-		              args_membdg[filter_times-1]=(char *)palloc(sizeof(char *));
-									strcpy(args_membdg[filter_times-1]," ");
-								}
-	              len=strlen(str_filter);
+			filter_times++;
+			pfree(str_result);
+		}
+		| List_where AND Param {
 
-	              sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)*len*2);
+			//I add a comma to args_membdg to separate the memberships degrees
+			fop=LEAST;
 
-	              snprintf(sub_sqlf_filters[filter_times],(len*2),"%s",str_filter);
+			//This I add an AND to the sub_sqlf_filters array
+			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);
+			snprintf(sub_sqlf_filters[filter_times],10," AND ");
+			filter_times++;
+			
+			//Add a field name to field variable
+			field=(char *)palloc(sizeof(char *)*strlen($3));
+			strcpy(field,$3);
+		}
+		| List_where RIGHTP AND Param {
+			field=(char *)palloc(sizeof(char *)*strlen($4));
+			strcpy(field,$4);
 
-								filter_times++;
-                pfree(str_result);
+			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+6);
+			snprintf(sub_sqlf_filters[filter_times],6,") AND ");
+			filter_times++;
+		}
+		| List_where OR Param {
 
-            }
-            | List_where AND Param {
+			fop=GREATEST;
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
+			snprintf(args_membdg[count_membdg],2,",");
+			count_membdg++;
 
-								//I add a comma to args_membdg to separate the memberships degrees
-								fop=LEAST;
+			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);
+			snprintf(sub_sqlf_filters[filter_times],10," OR ");
+			filter_times++;
 
-								//This I add an AND to the sub_sqlf_filters array
-                sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);
-                snprintf(sub_sqlf_filters[filter_times],10," AND ");
-								filter_times++;
+			field=(char *)palloc(sizeof(char *)*strlen($3));
+			strcpy(field,$3);
+		}
+		| List_where RIGHTP OR Param {
+			field=(char *)palloc(sizeof(char *)*strlen($4));
+			strcpy(field,$4);
 
-                field=(char *)palloc(sizeof(char *)*strlen($3));
-                strcpy(field,$3);
-            }
-            | List_where RIGHTP AND Param {
-                strcat($$,") AND ");
-                strcat($$,$4);
-                field=(char *)palloc(sizeof(char *)*strlen($4));
-                strcpy(field,$4);
-            }
-            | List_where OR Param {
-
-								fop=GREATEST;
-                args_membdg[filter_times]=(char *)palloc(sizeof(char *)+2);
-                snprintf(args_membdg[filter_times],2,",");
-
-                sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);
-                snprintf(sub_sqlf_filters[filter_times],10," OR ");
-								filter_times++;
-
-                field=(char *)palloc(sizeof(char *)*strlen($3));
-                strcpy(field,$3);
-            }
-            | List_where RIGHTP OR Param {
-                strcat($$,") OR ");
-                strcat($$,$4);
-                field=(char *)palloc(sizeof(char *)*strlen($4));
-                strcpy(field,$4);
-            }
+			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+6);
+			snprintf(sub_sqlf_filters[filter_times],6,") OR ");
+			filter_times++;
+		}
+		| List_where RIGHTP {
+			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+2);
+			snprintf(sub_sqlf_filters[filter_times],2,")");
+			filter_times++;
+		}
+			
 ;
 
 List_order:
@@ -462,28 +475,28 @@ int ScanKeyword(const char *word){
         int i,len;
 
     Keyword keyfuzzywords[] = {
-                    {"AND",AND},
-                    {"AS",AS},
-                    {"CREATE",CREATE},
-                    {"DROP",DROP},
-                    {"FROM",FROM},
-                    {"FUZZY",FUZZY},
-                    {"INFINIT",INFINIT},
-                    {"ON",ON},
-                    {"OR",OR},
-                    {"PREDICATE",PREDICATE},
-                    {"SELECT",SELECT},
-                    {"WHERE",WHERE},
-                    {"ORDER",ORDER},
-                    {"BY",BY},
-                    {"ASC",ASC},
-                    {"DESC",DESC},
-                    {"WITH",WITH},
-                    {"CALIBRATION",CALIBRATION},
-										{"INNER",INNER},
-										{"JOIN",JOIN},
-										{"LEFT",LEFT},
-										{"RIGHT",RIGHT}
+			{"AND",AND},
+			{"AS",AS},
+			{"CREATE",CREATE},
+			{"DROP",DROP},
+			{"FROM",FROM},
+			{"FUZZY",FUZZY},
+			{"INFINIT",INFINIT},
+			{"ON",ON},
+			{"OR",OR},
+			{"PREDICATE",PREDICATE},
+			{"SELECT",SELECT},
+			{"WHERE",WHERE},
+			{"ORDER",ORDER},
+			{"BY",BY},
+			{"ASC",ASC},
+			{"DESC",DESC},
+			{"WITH",WITH},
+			{"CALIBRATION",CALIBRATION},
+			{"INNER",INNER},
+			{"JOIN",JOIN},
+			{"LEFT",LEFT},
+			{"RIGHT",RIGHT}
     };
 
     len=sizeof(keyfuzzywords)/sizeof(Keyword);
