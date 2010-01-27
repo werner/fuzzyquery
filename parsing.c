@@ -102,7 +102,7 @@ char *translate_fuzzy_preds(char *result,char *field,const char *value,char **mi
       }
     }
 
-		*is_fuzzy=1;
+	*is_fuzzy=1;
     SPI_finish();
     pfree(fp_sqlf);
     return result;

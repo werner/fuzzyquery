@@ -12,6 +12,7 @@
 #include "miscadmin.h"
 
 #define ISINFINIT(x) strcmp(x,"INFINIT")==0 ? 0 : atof(x)
+#define IS_FLOAT(x) (strcmp(x,"0")==0 || atof(x)) ? true : false
 #define GET_TEXT(cstrp) DatumGetTextP(DirectFunctionCall1(textin, CStringGetDatum(cstrp)))
 #define GET_STR(textp) DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
 
@@ -232,13 +233,74 @@ membdg(PG_FUNCTION_ARGS)
     snprintf(str_result,sizeof(double),"%.2f",fabs(result));
 
     return_value=atof(str_result);
-
+	    
     pfree(str_result);
 	
     //I do this to prevent a membership degree bigger than 1.0
     if (return_value>1.0)
-        return Float8GetDatum(0);
+        return Float8GetDatum(0.0);
     else  
         return Float8GetDatum(return_value);
 
+}
+
+PG_FUNCTION_INFO_V1(membdg_total);
+
+Datum
+membdg_total(PG_FUNCTION_ARGS)
+{
+	ArrayType  *qa = (ArrayType *) DatumGetPointer(PG_DETOAST_DATUM_COPY(PG_GETARG_DATUM(0)));
+	static Oid	tsqOid = InvalidOid;
+	Datum	   *elemsp;
+	int			nelemsp;
+	char 		*fuzzymdgs[1024];
+	int 		i;
+	float		tmp_result;
+	char 		*pnum_s;
+	char 		*opr;
+	char 		*snum_s;
+	
+	deconstruct_array(qa, tsqOid, -1, false, 'i', &elemsp, NULL, &nelemsp);
+	
+	int 	j=0;	
+	int 	p=0; //This is to pass through the indexes taken
+	for (i=0;i<(nelemsp-1);i++){
+		if ((i+2)>(nelemsp-1))
+			break;
+		pnum_s=GET_STR(elemsp[i]);
+		opr=GET_STR(elemsp[i+1]);
+		snum_s=GET_STR(elemsp[i+2]);
+		if ((IS_FLOAT(pnum_s)) && (IS_FLOAT(snum_s))){
+			float pnum=atof(pnum_s);
+			float snum=atof(snum_s);
+			p=i+2;
+			if (pnum==snum)
+				tmp_result=pnum;
+			else if (strcmp(opr,"or")==0){
+				if (pnum>snum)
+					tmp_result=pnum;
+				else if (snum>pnum)
+					tmp_result=snum;
+			}else if (strcmp(opr,"and")==0){
+				if (pnum<snum)
+					tmp_result=pnum;
+				else if (snum<pnum)
+					tmp_result=snum;	
+			}
+			fuzzymdgs[j]=(char *)palloc(sizeof(double));
+		    snprintf(fuzzymdgs[j],sizeof(double),"%f",tmp_result);
+			j++;
+		}else{
+			if (i>p){
+				fuzzymdgs[j]=(char *)palloc(strlen(GET_STR(elemsp[i])));
+				fuzzymdgs[j]=GET_STR(elemsp[i]);
+				j++;
+			}
+		}
+	}
+	
+	for (i=0;i<j;i++)
+		pfree(fuzzymdgs[i]);
+	
+	return Float8GetDatum(tmp_result);
 }

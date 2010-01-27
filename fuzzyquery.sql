@@ -27,3 +27,8 @@ CREATE OR REPLACE FUNCTION membdg(double precision,text,text,text,text)
 RETURNS float
 AS '$libdir/fuzzyquery', 'membdg'
 LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION membdg_total(text[])
+RETURNS float
+AS '$libdir/fuzzyquery', 'membdg_total'
+LANGUAGE C;

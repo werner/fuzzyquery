@@ -112,16 +112,15 @@ query:  /* empty string */
 						calib_where=(char *)palloc(sizeof(char *)*len);
 						strcpy(calib_where,"");
 						
-						if (fop==LEAST)
-							strcpy(calib_where,"LEAST(");
-						else if (fop==GREATEST)
-							strcpy(calib_where,"GREATEST(");
+						strcpy(calib_where,"fuzzy.membdg_total(ARRAY[");
 
-						for (j=0;j<count_membdg;j++)
+						for (j=0;j<count_membdg;j++){
 							strcat(calib_where,args_membdg[j]);
-
-						//if (calib_where[strlen(calib_where)-1]!=')')
-						strcat(calib_where,") ");
+							strcat(calib_where,"::text");
+							if (j<count_membdg-1)
+								strcat(calib_where,",");							
+						}
+						strcat(calib_where,"]) ");
 						
 						strcat(sql,calib_where);
 						strcat(sql," as membdg ");
@@ -353,7 +352,11 @@ List_where:
 		| LEFTP Param {
 			field=(char *)palloc(sizeof(char *)*strlen($2));
 			strcpy(field,$2);
-							
+
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+5);
+			snprintf(args_membdg[count_membdg],5,"'('");
+			count_membdg++;
+			
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+2);
 			snprintf(sub_sqlf_filters[filter_times],2,"(");
 			filter_times++;
@@ -382,7 +385,12 @@ List_where:
 						membdg_values.min,membdg_values.first_core,membdg_values.second_core,membdg_values.max);
 			
 				count_membdg++;
+			}else if (is_fuzzy==0){
+				args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+5);
+				snprintf(args_membdg[count_membdg],5,"'nf'");
+				count_membdg++;
 			}
+			
 			len=strlen(str_filter);
 
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)*len*2);
@@ -395,9 +403,8 @@ List_where:
 		| List_where AND Param {
 
 			//I add a comma to args_membdg to separate the memberships degrees
-			fop=LEAST;
-			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
-			snprintf(args_membdg[count_membdg],2,",");
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+10);
+			snprintf(args_membdg[count_membdg],10,"'and'");
 			count_membdg++;
 
 			//This I add an AND to the sub_sqlf_filters array
@@ -411,13 +418,16 @@ List_where:
 		}
 		| List_where RIGHTP AND Param {
 
-			fop=LEAST;
-			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
-			snprintf(args_membdg[count_membdg],2,",");
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+5);
+			snprintf(args_membdg[count_membdg],5,"')'");
 			count_membdg++;
 
-			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+6);
-			snprintf(sub_sqlf_filters[filter_times],6,") AND ");
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+10);
+			snprintf(args_membdg[count_membdg],10,"'and'");
+			count_membdg++;
+
+			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);
+			snprintf(sub_sqlf_filters[filter_times],10,") AND ");
 			filter_times++;
 
 			field=(char *)palloc(sizeof(char *)*strlen($4));
@@ -425,9 +435,8 @@ List_where:
 		}
 		| List_where OR Param {
 
-			fop=GREATEST;
-			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
-			snprintf(args_membdg[count_membdg],2,",");
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+10);
+			snprintf(args_membdg[count_membdg],10,"'or'");
 			count_membdg++;
 
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);
@@ -439,12 +448,16 @@ List_where:
 		}
 		| List_where RIGHTP OR Param {
 
-			fop=GREATEST;
-			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+2);
-			snprintf(args_membdg[count_membdg],2,",");
+			//fop=GREATEST;
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+5);
+			snprintf(args_membdg[count_membdg],5,"')'");
 			count_membdg++;
 		
-			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+6);
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+10);
+			snprintf(args_membdg[count_membdg],10,"'or'");
+			count_membdg++;
+
+			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);
 			snprintf(sub_sqlf_filters[filter_times],6,") OR ");
 			filter_times++;
 
@@ -452,6 +465,11 @@ List_where:
 			strcpy(field,$4);
 		}
 		| List_where RIGHTP {
+		
+			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+5);
+			snprintf(args_membdg[count_membdg],5,"')'");
+			count_membdg++;
+		
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+2);
 			snprintf(sub_sqlf_filters[filter_times],2,")");
 			filter_times++;
