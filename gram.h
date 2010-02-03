@@ -77,7 +77,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 47 "gram.y"
+#line 50 "gram.y"
 
     int	integer;
     char *text;

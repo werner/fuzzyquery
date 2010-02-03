@@ -249,58 +249,20 @@ PG_FUNCTION_INFO_V1(membdg_total);
 Datum
 membdg_total(PG_FUNCTION_ARGS)
 {
-	ArrayType  *qa = (ArrayType *) DatumGetPointer(PG_DETOAST_DATUM_COPY(PG_GETARG_DATUM(0)));
-	static Oid	tsqOid = InvalidOid;
-	Datum	   *elemsp;
-	int			nelemsp;
-	char 		*fuzzymdgs[1024];
-	int 		i;
-	float		tmp_result;
-	char 		*pnum_s;
-	char 		*opr;
-	char 		*snum_s;
+	const char	*query=GET_STR(PG_GETARG_TEXT_P(0));
+	char 		*memdg;
+	float		fl_memdg;
+	void    	*result;
 	
-	deconstruct_array(qa, tsqOid, -1, false, 'i', &elemsp, NULL, &nelemsp);
+    memdg=(char *)palloc(sizeof(double));
+
+	yy_scan_string(query);
+
+    yyparse(&result);
+
+    memdg=result;
+
+	fl_memdg=atof(memdg);
 	
-	int 	j=0;	
-	int 	p=0; //This is to pass through the indexes taken
-	for (i=0;i<(nelemsp-1);i++){
-		if ((i+2)>(nelemsp-1))
-			break;
-		pnum_s=GET_STR(elemsp[i]);
-		opr=GET_STR(elemsp[i+1]);
-		snum_s=GET_STR(elemsp[i+2]);
-		if ((IS_FLOAT(pnum_s)) && (IS_FLOAT(snum_s))){
-			float pnum=atof(pnum_s);
-			float snum=atof(snum_s);
-			p=i+2;
-			if (pnum==snum)
-				tmp_result=pnum;
-			else if (strcmp(opr,"or")==0){
-				if (pnum>snum)
-					tmp_result=pnum;
-				else if (snum>pnum)
-					tmp_result=snum;
-			}else if (strcmp(opr,"and")==0){
-				if (pnum<snum)
-					tmp_result=pnum;
-				else if (snum<pnum)
-					tmp_result=snum;	
-			}
-			fuzzymdgs[j]=(char *)palloc(sizeof(double));
-		    snprintf(fuzzymdgs[j],sizeof(double),"%f",tmp_result);
-			j++;
-		}else{
-			if (i>p){
-				fuzzymdgs[j]=(char *)palloc(strlen(GET_STR(elemsp[i])));
-				fuzzymdgs[j]=GET_STR(elemsp[i]);
-				j++;
-			}
-		}
-	}
-	
-	for (i=0;i<j;i++)
-		pfree(fuzzymdgs[i]);
-	
-	return Float8GetDatum(tmp_result);
+	return Float8GetDatum(fl_memdg);
 }

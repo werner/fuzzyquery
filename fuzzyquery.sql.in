@@ -20,10 +20,15 @@ CREATE TABLE pg_fuzzypred_rel(
 GRANT SELECT ON pg_fuzzypredicate TO PUBLIC;
 
 CREATE OR REPLACE FUNCTION sqlf (text) RETURNS SETOF record
-AS 'MODULE_PATHNAME', 'sqlf'
+AS '$libdir/fuzzyquery', 'sqlf'
 LANGUAGE C VOLATILE STRICT;
 
 CREATE OR REPLACE FUNCTION membdg(double precision,text,text,text,text)
 RETURNS float
-AS 'MODULE_PATHNAME', 'membdg'
+AS '$libdir/fuzzyquery', 'membdg'
+LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION membdg_total(text)
+RETURNS float
+AS '$libdir/fuzzyquery', 'membdg_total'
 LANGUAGE C;

@@ -9,6 +9,7 @@
     #define YYDEBUG 1
     #define QUERY_LENGTH 5
     #define YYPARSE_PARAM result  /* need this to pass a pointer (void *) to yyparse */
+	#define IS_FLOAT(x) (strcmp(x,"0")==0 || atof(x)) ? true : false
 
     int real_length=0;
     char *field;
@@ -42,6 +43,8 @@
 
 	int ScanKeyword(const char *keyword);
 
+	char  *sql;
+
 %}
 
 %union {
@@ -52,121 +55,122 @@
 %token CREATE FUZZY PREDICATE ON AS COMMA DOTDOT LEFTP RIGHTP INFINIT INNER JOIN LEFT RIGHT
         DROP EQUAL SELECT WHERE FROM AND OR ORDER BY ASC DESC WITH CALIBRATION
 %token <text> PARAMETER 
-%type <text> Param Param_select Param_from List_where List_order SelectStmt
+%type <text> Param Param_select Param_from List_where List_order SelectStmt Memb_degree
 
 %%
 
 query:  /* empty string */
       |  query command
         {
-			int   i=0;
-			int   j=0;
-			char  *sql;
-			int   len;
- 			//This variable is used to add the membership degree function
-			//in the where clause 
-			char	*calib_where;
-
-			len=0;
-			for (i=0;i<real_length;i++)
-				len+=strlen(fuzzy_query[i]);
-			len+=20;
-			if(filter_times==1 || real_length==1 || count_membdg==1){
-			
-		        sql=(char *)palloc(sizeof(char *)*len);
-		        strcpy(sql,"");
-
-				for (i=0;i<real_length;i++){
-					if (i==FROM_CLAUSE){
-						strcat(sql,args_membdg[0]);
-						strcat(sql," as membdg");
-					}
-
-					strcat(sql,fuzzy_query[i]);
-
-					if (i==WHERE_CLAUSE)
-						strcat(sql," ORDER BY membdg");
-				}
-			}else{
-
-				for(i=0;i<filter_times;i++){
-					len+=strlen(sub_sqlf_filters[i]);
-					len+=150;
-				}
-
-				for(i=0;i<count_membdg;i++)
-					len+=strlen(args_membdg[i]);
-				
-				len+=strlen(fuzzy_query[SELECT_CLAUSE])+strlen(select_items);
-
-		        sql=(char *)palloc(sizeof(char *)*len);
-		        strcpy(sql,"");
+			if (real_length>=0){
+				int   i=0;
+				int   j=0;
+				int   len;
+				//This variable is used to add the membership degree function
+				//in the where clause 
+				char	*calib_where;
 
 				len=0;
-				for (i=0;i<real_length;i++){
-					if (i==FROM_CLAUSE){
+				for (i=0;i<real_length;i++)
+					len+=strlen(fuzzy_query[i]);
+				len+=20;
+				if(filter_times==1 || real_length==1 || count_membdg==1){
+				
+					sql=(char *)palloc(sizeof(char *)*len);
+					strcpy(sql,"");
 
-						for (j=0;j<count_membdg;j++)
-							len+=strlen(args_membdg[j]);
-
-						calib_where=(char *)palloc(sizeof(char *)*len);
-						strcpy(calib_where,"");
-						
-						strcpy(calib_where,"fuzzy.membdg_total(ARRAY[");
-
-						for (j=0;j<count_membdg;j++){
-							strcat(calib_where,args_membdg[j]);
-							strcat(calib_where,"::text");
-							if (j<count_membdg-1)
-								strcat(calib_where,",");							
+					for (i=0;i<real_length;i++){
+						if (i==FROM_CLAUSE){
+							strcat(sql,args_membdg[0]);
+							strcat(sql," as membdg");
 						}
-						strcat(calib_where,"]) ");
-						
-						strcat(sql,calib_where);
-						strcat(sql," as membdg ");
 
+						strcat(sql,fuzzy_query[i]);
+
+						if (i==WHERE_CLAUSE)
+							strcat(sql," ORDER BY membdg");
+					}
+				}else{
+
+					for(i=0;i<filter_times;i++){
+						len+=strlen(sub_sqlf_filters[i]);
+						len+=150;
 					}
 
-					//This is to prevent adding the WITH CALIBRATION at the end of the query
-					if (i!=CALIBRATION_CLAUSE)
-	            	strcat(sql,fuzzy_query[i]);
+					for(i=0;i<count_membdg;i++)
+						len+=strlen(args_membdg[i]);
+					
+					len+=strlen(fuzzy_query[SELECT_CLAUSE])+strlen(select_items);
 
-					if (i==WHERE_CLAUSE){
-						if (real_length==5){
-							strcat(sql," AND ");
+					sql=(char *)palloc(sizeof(char *)*len);
+					strcpy(sql,"");
+
+					len=0;
+					for (i=0;i<real_length;i++){
+						if (i==FROM_CLAUSE){
+
+							for (j=0;j<count_membdg;j++)
+								len+=strlen(args_membdg[j]);
+
+							calib_where=(char *)palloc(sizeof(char *)*len);
+							strcpy(calib_where,"");
+							
+								strcpy(calib_where,"fuzzy.membdg_total(");
+
+								for (j=0;j<count_membdg;j++){
+									strcat(calib_where,args_membdg[j]);
+									if (j<count_membdg-1)
+										strcat(calib_where,"||");							
+								}
+								strcat(calib_where,") ");
+							
 							strcat(sql,calib_where);
-							strcat(sql,"=");
-							strcat(sql,fuzzy_query[CALIBRATION_CLAUSE]);
+							strcat(sql," as membdg ");
+
 						}
-						strcat(sql," ORDER BY membdg");
+
+						//This is to prevent adding the WITH CALIBRATION at the end of the query
+						if (i!=CALIBRATION_CLAUSE)
+						strcat(sql,fuzzy_query[i]);
+
+						if (i==WHERE_CLAUSE){
+							if (real_length==5){
+								strcat(sql," AND ");
+								strcat(sql,calib_where);
+								strcat(sql,"=");
+								strcat(sql,fuzzy_query[CALIBRATION_CLAUSE]);
+							}
+							strcat(sql," ORDER BY membdg");
+						}
+
 					}
+					pfree(calib_where);
 
 				}
-				pfree(calib_where);
 
+				//Cleaning
+				if (real_length>1)
+					pfree(select_items);
+				for (i=0;i<real_length;i++){
+					strcpy(fuzzy_query[i],"");            
+					pfree(fuzzy_query[i]);
+				}
+				for (i=0;i<count_membdg;i++){
+					strcpy(args_membdg[i],"");
+					pfree(args_membdg[i]);
+				}
+				for (i=0;i<filter_times;i++){
+					strcpy(sub_sqlf_filters[i],"");						
+					pfree(sub_sqlf_filters[i]);
+				}
+				count_membdg=0;
+				filter_times=0;
+				real_length=0;
 			}
-
 			*((void **)result) = sql;
 
-			//Cleaning
 			pfree(sql);
-			if (real_length>1)
-				pfree(select_items);
-			for (i=0;i<real_length;i++){
-				strcpy(fuzzy_query[i],"");            
-				pfree(fuzzy_query[i]);
-			}
-			for (i=0;i<count_membdg;i++){
-				strcpy(args_membdg[i],"");
-				pfree(args_membdg[i]);
-			}
-			for (i=0;i<filter_times;i++){
-				strcpy(sub_sqlf_filters[i],"");						
-				pfree(sub_sqlf_filters[i]);
-			}
-			count_membdg=0;
-			filter_times=0;
-			real_length=0;
+			
         }
 ;
 
@@ -174,6 +178,14 @@ command: '\n'
         | CreateFuzzyPredStmt { real_length=1; }
         | DropFuzzyPredStmt { real_length=1; }
         | SelectStmt 
+		| Memb_degree { 
+			int len;
+			real_length=-1;
+
+			sql=(char *)palloc(sizeof(double));
+			strcpy(sql,"");
+			sql=$1; 
+		}
         | error '\n'  { yyerrok;}
 ;
 
@@ -342,7 +354,6 @@ Param_from:
 		}
 ;
 
-
 List_where:
 		Param {
 			$$=$1;
@@ -404,7 +415,7 @@ List_where:
 
 			//I add a comma to args_membdg to separate the memberships degrees
 			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+10);
-			snprintf(args_membdg[count_membdg],10,"'and'");
+			snprintf(args_membdg[count_membdg],10,"' AND '");
 			count_membdg++;
 
 			//This I add an AND to the sub_sqlf_filters array
@@ -423,7 +434,7 @@ List_where:
 			count_membdg++;
 
 			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+10);
-			snprintf(args_membdg[count_membdg],10,"'and'");
+			snprintf(args_membdg[count_membdg],10,"' AND '");
 			count_membdg++;
 
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);
@@ -436,7 +447,7 @@ List_where:
 		| List_where OR Param {
 
 			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+10);
-			snprintf(args_membdg[count_membdg],10,"'or'");
+			snprintf(args_membdg[count_membdg],10,"' OR '");
 			count_membdg++;
 
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);
@@ -454,7 +465,7 @@ List_where:
 			count_membdg++;
 		
 			args_membdg[count_membdg]=(char *)palloc(sizeof(char *)+10);
-			snprintf(args_membdg[count_membdg],10,"'or'");
+			snprintf(args_membdg[count_membdg],10,"' OR '");
 			count_membdg++;
 
 			sub_sqlf_filters[filter_times]=(char *)palloc(sizeof(char *)+10);
@@ -478,20 +489,75 @@ List_where:
 ;
 
 List_order:
-            Param { $$=$1; }
-            | List_order COMMA Param {
-                strcat($$,", ");
-                strcat($$,$3);
-            }
-            | List_order ASC { 
-                strcat($$," ASC");
-                strcat($$,$1);
-            }
-            | List_order DESC { 
-                strcat($$," DESC");
-                strcat($$,$1);
-            }
+	Param { $$=$1; }
+	| List_order COMMA Param {
+		strcat($$,", ");
+		strcat($$,$3);
+	}
+	| List_order ASC { 
+		strcat($$," ASC");
+		strcat($$,$1);
+	}
+	| List_order DESC { 
+		strcat($$," DESC");
+		strcat($$,$1);
+	}
 ;
+
+Memb_degree:
+	Param { $$=$1; }
+	| LEFTP Param { $$=$2; }
+	| Memb_degree AND Param {
+		float pnum;
+		float snum;
+		if (IS_FLOAT($1) && IS_FLOAT($3)){
+			pnum=atof($1);
+			snum=atof($3);
+			if (pnum<snum) 
+				$$=$1;
+			else 
+				$$=$3;
+		}
+	}
+	| Memb_degree RIGHTP AND Param { 
+		float pnum;
+		float snum;
+		if (IS_FLOAT($1) && IS_FLOAT($4)){
+			pnum=atof($1);
+			snum=atof($4);
+			if (pnum<snum) 
+				$$=$1;
+			else 
+				$$=$4;	
+		}
+	}
+	| Memb_degree OR Param { 
+		float pnum;
+		float snum;
+		if (IS_FLOAT($1) && IS_FLOAT($3)){
+			pnum=atof($1);
+			snum=atof($3);
+			if (pnum>snum) 
+				$$=$1;
+			else 
+				$$=$3;	
+		}
+	}
+	| Memb_degree RIGHTP OR Param { 
+		float pnum;
+		float snum;
+		if (IS_FLOAT($1) && IS_FLOAT($4)){
+			pnum=atof($1);
+			snum=atof($4);
+			if (pnum>snum) 
+				$$=$1;
+			else 
+				$$=$4;
+		}				
+	}
+	| Memb_degree RIGHTP { $$=$1; }
+;
+	
 
 %%
 void yyerror (char *s) {elog (ERROR, "%s\n", s);}
