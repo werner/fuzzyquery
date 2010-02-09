@@ -10,7 +10,9 @@
     #define QUERY_LENGTH 5
     #define YYPARSE_PARAM result  /* need this to pass a pointer (void *) to yyparse */
 	#define IS_FLOAT(x) (strcmp(x,"0")==0 || atof(x)) ? true : false
-
+	#define FBIGGER(fn,sn) (atof(fn)>atof(sn)) ? fn :sn
+	#define FLEAST(fn,sn) (atof(fn)<atof(sn)) ? fn :sn
+	
     int real_length=0;
     char *field;
     char *fuzzy_query[QUERY_LENGTH];
@@ -42,7 +44,7 @@
 	int *is_fuzzy;
 
 	int ScanKeyword(const char *keyword);
-
+	
 	char  *sql;
 
 %}
@@ -508,53 +510,17 @@ Memb_degree:
 	Param { $$=$1; }
 	| LEFTP Param { $$=$2; }
 	| Memb_degree AND Param {
-		float pnum;
-		float snum;
-		if (IS_FLOAT($1) && IS_FLOAT($3)){
-			pnum=atof($1);
-			snum=atof($3);
-			if (pnum<snum) 
-				$$=$1;
-			else 
-				$$=$3;
-		}
+		$$=FLEAST($1,$3);
 	}
 	| Memb_degree RIGHTP AND Param { 
-		float pnum;
-		float snum;
-		if (IS_FLOAT($1) && IS_FLOAT($4)){
-			pnum=atof($1);
-			snum=atof($4);
-			if (pnum<snum) 
-				$$=$1;
-			else 
-				$$=$4;	
-		}
+		$$=FLEAST($1,$4);
 	}
 	| Memb_degree OR Param { 
-		float pnum;
-		float snum;
-		if (IS_FLOAT($1) && IS_FLOAT($3)){
-			pnum=atof($1);
-			snum=atof($3);
-			if (pnum>snum) 
-				$$=$1;
-			else 
-				$$=$3;	
-		}
+		$$=FBIGGER($1,$3);
 	}
-	| Memb_degree RIGHTP OR Param { 
-		float pnum;
-		float snum;
-		if (IS_FLOAT($1) && IS_FLOAT($4)){
-			pnum=atof($1);
-			snum=atof($4);
-			if (pnum>snum) 
-				$$=$1;
-			else 
-				$$=$4;
-		}				
-	}
+	| Memb_degree RIGHTP OR Param {
+		$$=FBIGGER($1,$4);
+	}				
 	| Memb_degree RIGHTP { $$=$1; }
 ;
 	
