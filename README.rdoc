@@ -1,0 +1,49 @@
+== FuzzyQuery
+A library to include sqlf parsing to PostgreSQL 8.2 and above
+
+It just translates SQLf to SQL.
+
+SQLf is an extension to SQL to include [http://en.wikipedia.org/wiki/Fuzzy_logic Fuzzy Logic].
+
+== Install
+
+It works on Linux
+
+Download the fuzzyquery.so and fuzzyquery.sql files, then modify the sql file where it writes $libdir/fuzzyquery, 
+change it to the path where you downloaded the library file.
+
+== Quick Start:
+
+
+  CREATE TABLE people (name character varying(50),age int);
+  INSERT INTO people VALUES ('Peter',15);
+  INSERT INTO people VALUES ('John',19);
+  INSERT INTO people VALUES ('Richard',35);
+  INSERT INTO people VALUES ('Michael',55);
+  INSERT INTO people VALUES ('Joseph',53);
+
+  SELECT fuzzy.sqlf('CREATE FUZZY PREDICATE young ON 0 .. 120 AS (0,0,20,30)'::text);
+  SELECT fuzzy.sqlf('CREATE FUZZY PREDICATE old ON 0 .. 120 AS (50,60,INFINIT,INFINIT)'::text);
+
+  SELECT * FROM fuzzy.sqlf('SELECT name FROM people WHERE age=young ORDER BY name'::text) AS (name character varying, membdg float);
+  SELECT * FROM fuzzy.sqlf('SELECT name FROM people WHERE age=old ORDER BY name'::text) AS (name character varying, membdg float);
+
+
+A fuzzy predicate is an expression you can use as a filter in a range of values.
+In a fuzzy predicate we have two borders defined as minimum and maximum values, 
+and the cores are the complete inclusion of the fuzzy predicate in the range.
+
+In the code above you create a young person like this:
+age range: 0..120<
+minimum number:0
+first core:0
+second core:20
+maximum number:30
+
+The old person has an infinite value as a second core and maximum value.
+
+== Install from sources
+I build this library in order to be a contrib module someday. 
+So to install it you need to download PostgreSQL from sources, 
+create a folder in contrib and include it in the Makefile of the contrib folder, 
+then you can do make and make install and follow the instructions to install any other contrib module.
