@@ -3,7 +3,7 @@ A library to include sqlf parsing to PostgreSQL 8.2 and above
 
 It just translates SQLf to SQL.
 
-SQLf is an extension to SQL to include [http://en.wikipedia.org/wiki/Fuzzy_logic Fuzzy Logic].
+SQLf is an extension to SQL to include {Fuzzy Logic}[http://en.wikipedia.org/wiki/Fuzzy_logic].
 
 == Install
 
