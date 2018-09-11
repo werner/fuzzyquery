@@ -2,10 +2,10 @@ MODULE_big = fuzzyquery
 OBJS= gram.o parsing.o fuzzyquery.o
 DATA_built = $(addsuffix .sql, $(MODULE_big))
 
-subdir = contrib/fuzzyquery
-top_builddir = ../..
-include $(top_builddir)/src/Makefile.global
-include $(top_srcdir)/contrib/contrib-global.mk
+# subdir = contrib/fuzzyquery
+# top_builddir = ../..
+# include $(top_builddir)/src/Makefile.global
+# include $(top_srcdir)/contrib/contrib-global.mk
 
 FLEXFLAGS = -CF
 
